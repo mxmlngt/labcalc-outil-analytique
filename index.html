@@ -481,6 +481,24 @@
     margin-top: 0.5rem;
     display: none;
   }
+
+  /* DOMAIN BUTTONS */
+  .domain-btn {
+    padding: 0.45rem 1rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: 'Lato', sans-serif;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.8);
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .domain-btn:hover { background: rgba(255,255,255,0.2); color: white; }
+  .domain-btn.active { background: var(--gold-light); color: var(--bordeaux-dark); border-color: var(--gold-light); }
 </style>
 </head>
 <body>
@@ -952,19 +970,57 @@
 <!-- ═══════════════════════════════════════════ VALIDATION ═══ -->
 <div class="section" id="valid">
   <div class="section-title">Outil de Validation de Méthode</div>
-  <div class="section-desc">Calcul des critères ICH Q2(R1) : répétabilité, exactitude, linéarité, LOD/LOQ</div>
+  <div class="section-desc">Critères ICH Q2(R1) avec seuils d'acceptation par domaine</div>
 
+  <!-- SÉLECTEUR DOMAINE GLOBAL -->
+  <div style="background:linear-gradient(135deg,var(--bordeaux-dark),var(--bordeaux));border-radius:12px;padding:1.2rem 1.8rem;margin-bottom:1.8rem;display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
+    <div style="color:white;">
+      <div style="font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;opacity:0.8;margin-bottom:0.3rem;">Domaine d'application</div>
+      <div style="font-size:0.85rem;color:var(--gold-light);font-weight:700;" id="domain_label">Pharmaceutique / Ph.Eur. — ICH Q2(R1)</div>
+    </div>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-left:auto;">
+      <button class="domain-btn active" data-domain="pharma" onclick="setDomain(this)">💊 Pharma</button>
+      <button class="domain-btn" data-domain="cosme" onclick="setDomain(this)">🧴 Cosmétique</button>
+      <button class="domain-btn" data-domain="agro" onclick="setDomain(this)">🌾 Agroalimentaire</button>
+      <button class="domain-btn" data-domain="indus" onclick="setDomain(this)">⚙ Industrie</button>
+    </div>
+  </div>
+
+  <!-- TABLEAU DE RÉFÉRENCE DES SEUILS -->
   <div class="card-full" style="margin-bottom:1.5rem;">
-    <div class="card-title" style="margin-bottom:1rem;"><span class="icon">📊</span> Répétabilité & Fidélité Intermédiaire</div>
-    <div class="explanation">
-      Saisir les résultats de mesures répétées (même concentration). Calcul automatique de la moyenne, l'écart-type, le CV% et l'erreur relative.<br>
-      <strong>Critère ICH</strong> : CV% ≤ 2% (répétabilité) · CV% ≤ 3% (fidélité intermédiaire) pour analyses courantes.
+    <div class="card-title" style="margin-bottom:1rem;"><span class="icon">📋</span> Seuils d'acceptation — <span id="ref_domain_title">Pharmaceutique / Ph.Eur.</span></div>
+    <div style="overflow-x:auto;">
+      <table class="data-table" id="thresholds_table">
+        <thead>
+          <tr><th>Critère</th><th>Paramètre</th><th>Seuil d'acceptation</th><th>Référence</th></tr>
+        </thead>
+        <tbody id="thresholds_body"></tbody>
+      </table>
+    </div>
+    <button class="btn btn-copy" style="margin-top:1rem;" onclick="copyThresholds()">📋 Copier tableau de référence</button>
+  </div>
+
+  <!-- RÉPÉTABILITÉ -->
+  <div class="card-full" style="margin-bottom:1.5rem;">
+    <div class="card-title" style="margin-bottom:0.5rem;"><span class="icon">📊</span> Répétabilité & Fidélité Intermédiaire</div>
+    <div class="explanation" id="rep_expl">
+      Saisir les résultats de mesures répétées (même concentration). Calcul de la moyenne, écart-type, CV% et erreur relative.<br>
+      <strong>Les seuils sont appliqués selon le domaine sélectionné ci-dessus.</strong>
     </div>
 
-    <div class="input-row" style="margin-bottom:1rem;">
-      <span class="input-label">Concentration théorique</span>
-      <input type="number" id="rep_cth" step="any" placeholder="ex: 10.00">
-      <select id="rep_unit"><option>mg/L</option><option>µg/L</option><option>ng/mL</option><option>µg/mL</option><option>ppm</option></select>
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+      <div class="input-row">
+        <span class="input-label">Concentration théorique</span>
+        <input type="number" id="rep_cth" step="any" placeholder="ex: 10.00">
+        <select id="rep_unit"><option>mg/L</option><option>µg/L</option><option>ng/mL</option><option>µg/mL</option><option>ppm</option><option>%</option></select>
+      </div>
+      <div class="input-row">
+        <span class="input-label">Type de fidélité</span>
+        <select id="rep_fidelity">
+          <option value="repetabilite">Répétabilité (intra-jour)</option>
+          <option value="intermediaire">Fidélité intermédiaire (inter-jour)</option>
+        </select>
+      </div>
     </div>
 
     <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:1rem;" id="rep_inputs">
@@ -986,7 +1042,7 @@
       <div class="val-grid">
         <div class="val-card">
           <h4>📈 Statistiques descriptives</h4>
-          <div id="rep_stats" style="font-family:'Courier Prime',monospace;font-size:0.85rem;line-height:2;"></div>
+          <div id="rep_stats" style="font-family:'Courier Prime',monospace;font-size:0.85rem;line-height:2;white-space:pre;"></div>
         </div>
         <div class="val-card">
           <h4>✅ Critères de validation</h4>
@@ -996,11 +1052,12 @@
     </div>
   </div>
 
+  <!-- LOD / LOQ -->
   <div class="card-full">
     <div class="card-title" style="margin-bottom:1rem;"><span class="icon">🎯</span> LOD / LOQ (Signal/Bruit)</div>
     <div class="explanation">
       <strong>LOD</strong> = 3 × σ<sub>bruit</sub> / pente &nbsp;|&nbsp; <strong>LOQ</strong> = 10 × σ<sub>bruit</sub> / pente<br>
-      Méthode basée sur l'écart-type du bruit de fond et la pente de la droite d'étalonnage.
+      Méthode basée sur l'écart-type du bruit de fond et la pente de la droite d'étalonnage. Le LOQ doit être ≤ à la plus basse concentration de la gamme.
     </div>
 
     <div style="display:flex;gap:2rem;flex-wrap:wrap;">
@@ -1017,21 +1074,29 @@
           <span class="input-label">Unité conc.</span>
           <select id="lod_unit"><option>mg/L</option><option>µg/L</option><option>ng/mL</option><option>µg/mL</option><option>ppm</option><option>ppb</option></select>
         </div>
+        <div class="input-row">
+          <span class="input-label">LOQ attendu (spec.)</span>
+          <input type="number" id="lod_spec" step="any" placeholder="optionnel">
+          <span class="unit-label" style="font-size:0.72rem;">(même unité)</span>
+        </div>
         <div class="btn-row">
           <button class="btn btn-primary" onclick="calcLOD()">Calculer LOD/LOQ</button>
           <button class="btn btn-copy" onclick="copyLOD()">📋 Copier</button>
         </div>
       </div>
-      <div id="lod_result" style="display:none;align-self:flex-end;">
-        <div style="display:flex;gap:1rem;">
-          <div style="background:linear-gradient(135deg,var(--bordeaux-dark),var(--bordeaux));border-radius:10px;padding:1.2rem 1.8rem;color:white;min-width:140px;">
+      <div id="lod_result" style="display:none;align-self:flex-start;margin-top:0.5rem;">
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+          <div style="background:linear-gradient(135deg,var(--bordeaux-dark),var(--bordeaux));border-radius:10px;padding:1.2rem 1.8rem;color:white;min-width:150px;">
             <div style="font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.8;">LOD</div>
             <div style="font-family:'Courier Prime',monospace;font-size:1.2rem;font-weight:700;color:var(--gold-light);" id="lod_val"></div>
+            <div style="font-size:0.7rem;opacity:0.75;margin-top:0.2rem;">= 3σ / pente</div>
           </div>
-          <div style="background:var(--beige-light);border-radius:10px;padding:1.2rem 1.8rem;border:1px solid var(--beige-dark);min-width:140px;">
+          <div style="background:var(--beige-light);border-radius:10px;padding:1.2rem 1.8rem;border:1px solid var(--beige-dark);min-width:150px;">
             <div style="font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);">LOQ</div>
             <div style="font-family:'Courier Prime',monospace;font-size:1.2rem;font-weight:700;color:var(--bordeaux);" id="loq_val"></div>
+            <div style="font-size:0.7rem;color:var(--text-light);margin-top:0.2rem;">= 10σ / pente</div>
           </div>
+          <div style="border-radius:10px;padding:1.2rem 1.8rem;min-width:150px;display:flex;flex-direction:column;justify-content:center;" id="lod_status_box"></div>
         </div>
       </div>
     </div>
@@ -1748,7 +1813,97 @@ function copyFD() {
   const btn = event.target; flashCopy(btn, '📋 Copier');
 }
 
-// ─── RÉPÉTABILITÉ ─────────────────────────────────────────────
+// ─── DOMAINES & SEUILS ───────────────────────────────────────
+const DOMAINS = {
+  pharma: {
+    label: 'Pharmaceutique / Ph.Eur. — ICH Q2(R1)',
+    thresholds: [
+      { critere: 'Répétabilité',           param: 'CV%',                   seuil: '≤ 1.0 %',        ref: 'Ph.Eur. / ICH Q2(R1)' },
+      { critere: 'Fidélité intermédiaire', param: 'CV%',                   seuil: '≤ 2.0 %',        ref: 'ICH Q2(R1)' },
+      { critere: 'Exactitude',             param: 'Erreur relative (ER%)', seuil: '98 – 102 %',     ref: 'Ph.Eur. 2.2.33' },
+      { critere: 'Linéarité (R²)',         param: 'Coeff. corrélation',    seuil: '≥ 0.999',        ref: 'ICH Q2(R1)' },
+      { critere: 'Récupération',           param: 'R%',                    seuil: '98 – 102 %',     ref: 'Ph.Eur.' },
+      { critere: 'Incertitude élargie',    param: 'Ur% (k=2)',             seuil: '≤ 2.0 %',        ref: 'ISO 17025' },
+    ],
+    cv_rep: 1.0, cv_inter: 2.0, er_min: 98, er_max: 102, rec_min: 98, rec_max: 102, r2: 0.999
+  },
+  cosme: {
+    label: 'Cosmétique — ISO 29621 / CTFA',
+    thresholds: [
+      { critere: 'Répétabilité',           param: 'CV%',                   seuil: '≤ 2.0 %',        ref: 'ISO 29621' },
+      { critere: 'Fidélité intermédiaire', param: 'CV%',                   seuil: '≤ 3.0 %',        ref: 'CTFA / ISO 29621' },
+      { critere: 'Exactitude',             param: 'Erreur relative (ER%)', seuil: '95 – 105 %',     ref: 'CTFA' },
+      { critere: 'Linéarité (R²)',         param: 'Coeff. corrélation',    seuil: '≥ 0.998',        ref: 'ISO 29621' },
+      { critere: 'Récupération',           param: 'R%',                    seuil: '90 – 110 %',     ref: 'CTFA' },
+      { critere: 'Incertitude élargie',    param: 'Ur% (k=2)',             seuil: '≤ 5.0 %',        ref: 'ISO 17025' },
+    ],
+    cv_rep: 2.0, cv_inter: 3.0, er_min: 95, er_max: 105, rec_min: 90, rec_max: 110, r2: 0.998
+  },
+  agro: {
+    label: 'Agroalimentaire — SANTE 11945 / NF V03',
+    thresholds: [
+      { critere: 'Répétabilité',           param: 'CV%',                   seuil: '≤ 5.0 %',        ref: 'SANTE 11945 / NF V03' },
+      { critere: 'Fidélité intermédiaire', param: 'CV%',                   seuil: '≤ 8.0 %',        ref: 'SANTE 11945' },
+      { critere: 'Exactitude',             param: 'Erreur relative (ER%)', seuil: '90 – 110 %',     ref: 'Règl. CE 2073/2005' },
+      { critere: 'Linéarité (R²)',         param: 'Coeff. corrélation',    seuil: '≥ 0.995',        ref: 'NF V03-110' },
+      { critere: 'Récupération',           param: 'R%',                    seuil: '75 – 120 %',     ref: 'SANTE 11945' },
+      { critere: 'Incertitude élargie',    param: 'Ur% (k=2, traces)',     seuil: '≤ 25 %',         ref: 'SANTE 11945' },
+    ],
+    cv_rep: 5.0, cv_inter: 8.0, er_min: 90, er_max: 110, rec_min: 75, rec_max: 120, r2: 0.995
+  },
+  indus: {
+    label: 'Industrie — ISO 5725 / NF EN',
+    thresholds: [
+      { critere: 'Répétabilité',           param: 'CV%',                   seuil: '≤ 3.0 %',        ref: 'ISO 5725-2' },
+      { critere: 'Fidélité intermédiaire', param: 'CV%',                   seuil: '≤ 5.0 %',        ref: 'ISO 5725-3' },
+      { critere: 'Exactitude',             param: 'Erreur relative (ER%)', seuil: '95 – 105 %',     ref: 'ISO 5725-4' },
+      { critere: 'Linéarité (R²)',         param: 'Coeff. corrélation',    seuil: '≥ 0.997',        ref: 'ISO 5725' },
+      { critere: 'Récupération',           param: 'R%',                    seuil: '90 – 110 %',     ref: 'ISO 5725' },
+      { critere: 'Incertitude élargie',    param: 'Ur% (k=2)',             seuil: '≤ 5.0 %',        ref: 'ISO 17025' },
+    ],
+    cv_rep: 3.0, cv_inter: 5.0, er_min: 95, er_max: 105, rec_min: 90, rec_max: 110, r2: 0.997
+  }
+};
+
+let currentDomain = 'pharma';
+
+function setDomain(btn) {
+  document.querySelectorAll('.domain-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentDomain = btn.dataset.domain;
+  const d = DOMAINS[currentDomain];
+  document.getElementById('domain_label').textContent = d.label;
+  document.getElementById('ref_domain_title').textContent = d.label;
+  renderThresholds();
+  document.getElementById('rep_result').style.display = 'none';
+  document.getElementById('lod_result').style.display = 'none';
+}
+
+function renderThresholds() {
+  const d = DOMAINS[currentDomain];
+  const tbody = document.getElementById('thresholds_body');
+  tbody.innerHTML = d.thresholds.map(t => `
+    <tr>
+      <td style="font-weight:700;color:var(--bordeaux);">${t.critere}</td>
+      <td>${t.param}</td>
+      <td><span style="font-family:'Courier Prime',monospace;font-weight:700;color:var(--bordeaux-dark);background:var(--beige-light);padding:0.2rem 0.6rem;border-radius:4px;">${t.seuil}</span></td>
+      <td style="font-size:0.78rem;color:var(--text-light);">${t.ref}</td>
+    </tr>`).join('');
+}
+
+function copyThresholds() {
+  const d = DOMAINS[currentDomain];
+  let text = `=== SEUILS D'ACCEPTATION — ${d.label.toUpperCase()} ===\n`;
+  text += `Critère                      Paramètre                      Seuil                Référence\n`;
+  text += '─'.repeat(90) + '\n';
+  d.thresholds.forEach(t => {
+    text += `${t.critere.padEnd(28)} ${t.param.padEnd(30)} ${t.seuil.padEnd(20)} ${t.ref}\n`;
+  });
+  navigator.clipboard.writeText(text);
+  const btn = event.target; flashCopy(btn, '📋 Copier tableau de référence');
+}
+
+// ─── RÉPÉTABILITÉ (domain-aware) ─────────────────────────────
 function addRepInput() {
   const n = document.querySelectorAll('.rep_val').length + 1;
   const inp = document.createElement('input');
@@ -1770,57 +1925,91 @@ function calcRepetabilite() {
   const unit = document.getElementById('rep_unit').value;
   const cth = parseFloat(document.getElementById('rep_cth').value);
   const er = isNaN(cth) ? null : ((mean - cth) / cth) * 100;
-  const rsd = cv;
+  const fidelity = document.getElementById('rep_fidelity').value;
+  const d = DOMAINS[currentDomain];
+  const cvLimit = fidelity === 'repetabilite' ? d.cv_rep : d.cv_inter;
+  const cvPass = cv <= cvLimit;
+  const cvWarn = !cvPass && cv <= cvLimit * 1.5;
+  const erPass = er !== null ? (mean / cth * 100) >= d.er_min && (mean / cth * 100) <= d.er_max : null;
 
-  document.getElementById('rep_stats').innerHTML =
-    `n = ${n} mesures\n` +
-    `Moyenne = ${numFmt(mean)} ${unit}\n` +
+  document.getElementById('rep_stats').textContent =
+    `n          = ${n} mesures\n` +
+    `Moyenne    = ${numFmt(mean)} ${unit}\n` +
     `Écart-type = ${numFmt(sd)} ${unit}\n` +
-    `CV% = ${numFmt(cv)}%\n` +
-    (er !== null ? `Erreur relative = ${numFmt(er)}%` : '');
+    `CV%        = ${numFmt(cv)} %\n` +
+    (er !== null ? `ER%        = ${numFmt(er)} %\n` : '') +
+    `Min        = ${numFmt(Math.min(...vals))} ${unit}\n` +
+    `Max        = ${numFmt(Math.max(...vals))} ${unit}`;
 
-  let crit = '';
-  const cvPass = cv <= 2;
-  const erPass = er !== null ? Math.abs(er) <= 2 : null;
-  crit += `<div style="margin-bottom:0.5rem;display:flex;align-items:center;gap:0.5rem;">
-    <span>CV% = ${numFmt(cv)}%</span>
-    <span class="badge ${cvPass ? 'badge-pass' : cv <= 5 ? 'badge-warn' : 'badge-fail'}">${cvPass ? '✓ Conforme' : cv <= 5 ? '⚠ Limite' : '✗ Non conforme'}</span>
+  let crit = `<div style="margin-bottom:0.6rem;font-size:0.75rem;color:var(--text-light);font-style:italic;border-bottom:1px solid var(--beige-dark);padding-bottom:0.4rem;">
+    Domaine : <strong style="color:var(--bordeaux);">${d.label.split('—')[0].trim()}</strong>
   </div>`;
+
+  crit += `<div style="margin-bottom:0.8rem;">
+    <div style="font-size:0.78rem;margin-bottom:0.35rem;color:var(--text-mid);">
+      <strong>CV%</strong> — seuil ${fidelity === 'repetabilite' ? 'répétabilité' : 'fidélité int.'} : ≤ ${cvLimit}%
+    </div>
+    <span class="badge ${cvPass ? 'badge-pass' : cvWarn ? 'badge-warn' : 'badge-fail'}">
+      ${numFmt(cv)}% &nbsp;→&nbsp; ${cvPass ? '✓ Conforme' : cvWarn ? '⚠ Limite' : '✗ Non conforme'}
+    </span>
+  </div>`;
+
   if (erPass !== null) {
-    crit += `<div style="display:flex;align-items:center;gap:0.5rem;">
-      <span>ER% = ${numFmt(er)}%</span>
-      <span class="badge ${erPass ? 'badge-pass' : Math.abs(er) <= 5 ? 'badge-warn' : 'badge-fail'}">${erPass ? '✓ Conforme' : '⚠ Vérifier'}</span>
+    const exactPct = mean / cth * 100;
+    crit += `<div style="margin-bottom:0.8rem;">
+      <div style="font-size:0.78rem;margin-bottom:0.35rem;color:var(--text-mid);">
+        <strong>Exactitude</strong> — seuil : ${d.er_min}–${d.er_max}%
+      </div>
+      <span class="badge ${erPass ? 'badge-pass' : 'badge-fail'}">
+        ${numFmt(exactPct)}% &nbsp;→&nbsp; ${erPass ? '✓ Conforme' : '✗ Non conforme'}
+      </span>
     </div>`;
   }
+
   document.getElementById('rep_criteria').innerHTML = crit;
   document.getElementById('rep_result').style.display = 'block';
 }
 
 function copyRepetabilite() {
   const stats = document.getElementById('rep_stats').textContent;
-  const unit = document.getElementById('rep_unit').value;
-  navigator.clipboard.writeText(`=== RÉPÉTABILITÉ ===\n${stats}`);
+  const d = DOMAINS[currentDomain];
+  navigator.clipboard.writeText(`=== RÉPÉTABILITÉ — ${d.label} ===\n${stats}`);
   const btn = event.target; flashCopy(btn, '📋 Copier rapport');
 }
 
-// ─── LOD / LOQ ────────────────────────────────────────────────
+// ─── LOD / LOQ (domain-aware) ─────────────────────────────────
 function calcLOD() {
   const sigma = parseFloat(document.getElementById('lod_sigma').value);
   const slope = parseFloat(document.getElementById('lod_slope').value);
   const unit = document.getElementById('lod_unit').value;
+  const spec = parseFloat(document.getElementById('lod_spec').value);
   if ([sigma, slope].some(isNaN)) return alert('Remplissez tous les champs.');
 
   const lod = 3 * sigma / slope;
   const loq = 10 * sigma / slope;
   document.getElementById('lod_val').textContent = `${numFmt(lod)} ${unit}`;
   document.getElementById('loq_val').textContent = `${numFmt(loq)} ${unit}`;
+
+  let statusHtml = '';
+  if (!isNaN(spec)) {
+    const pass = loq <= spec;
+    statusHtml = `<div style="font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-light);margin-bottom:0.4rem;">LOQ vs spécification</div>
+    <span class="badge ${pass ? 'badge-pass' : 'badge-fail'}" style="font-size:0.8rem;">
+      ${pass ? `✓ LOQ ≤ ${numFmt(spec)} ${unit}` : `✗ LOQ > ${numFmt(spec)} ${unit}`}
+    </span>`;
+  } else {
+    statusHtml = `<div style="font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-light);margin-bottom:0.4rem;">Domaine actif</div>
+    <div style="font-size:0.78rem;color:var(--bordeaux);font-weight:700;">${DOMAINS[currentDomain].label.split('—')[0].trim()}</div>`;
+  }
+  document.getElementById('lod_status_box').innerHTML = statusHtml;
   document.getElementById('lod_result').style.display = 'flex';
 }
 
 function copyLOD() {
   const lod = document.getElementById('lod_val').textContent;
   const loq = document.getElementById('loq_val').textContent;
-  navigator.clipboard.writeText(`LOD = ${lod}\nLOQ = ${loq}`);
+  const domain = DOMAINS[currentDomain].label;
+  navigator.clipboard.writeText(`=== LOD / LOQ — ${domain} ===\nLOD = ${lod}\nLOQ = ${loq}`);
   const btn = event.target; flashCopy(btn, '📋 Copier');
 }
 
@@ -2034,6 +2223,7 @@ function copyRmul() {
 // ─── INIT ─────────────────────────────────────────────────────
 buildGammeTable();
 updateMnMFields();
+renderThresholds();
 </script>
 </body>
 </html>

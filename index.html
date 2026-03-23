@@ -523,6 +523,7 @@
     <button class="nav-tab" onclick="showSection('valid')"><span class="tab-icon">✓</span>Validation</button>
     <button class="nav-tab" onclick="showSection('incert')"><span class="tab-icon">±</span>Incertitude</button>
     <button class="nav-tab" onclick="showSection('recup')"><span class="tab-icon">🔄</span>Récupération</button>
+    <button class="nav-tab" onclick="showSection('colonne')"><span class="tab-icon">🏛</span>Colonne HPLC</button>
   </div>
 </nav>
 
@@ -1359,6 +1360,247 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ COLONNE HPLC ══ -->
+<div class="section" id="colonne">
+  <div class="section-title">Colonne HPLC — Caractéristiques & Débits</div>
+  <div class="section-desc">Volume mort, débit linéaire, temps mort, nombre de volumes de colonne et équilibration</div>
+
+  <!-- CARACTÉRISTIQUES COLONNE -->
+  <div class="card-full" style="margin-bottom:1.5rem;">
+    <div class="card-title" style="margin-bottom:0.6rem;"><span class="icon">🏛</span> Géométrie & Phase</div>
+    <div class="explanation">
+      Renseignez les caractéristiques physiques de votre colonne. Tous les calculs ci-dessous en dépendent.<br>
+      <strong>V₀</strong> = π × (d/2)² × L × ε<sub>t</sub> &nbsp;|&nbsp; ε<sub>t</sub> ≈ 0.65 (C18/C8 sphérique) · 0.70 (HILIC) · 0.68 (phényle) · 0.60 (monolithique)
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-bottom:1.2rem;">
+      <div>
+        <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--bordeaux);margin-bottom:0.7rem;">Dimensions</div>
+        <div class="input-row">
+          <span class="input-label">Longueur (L)</span>
+          <input type="number" id="col_L" step="1" value="150" placeholder="150">
+          <span class="unit-label">mm</span>
+        </div>
+        <div class="input-row">
+          <span class="input-label">Diamètre interne (d)</span>
+          <input type="number" id="col_d" step="0.1" value="4.6" placeholder="4.6">
+          <span class="unit-label">mm</span>
+        </div>
+        <div class="input-row">
+          <span class="input-label">Taille particules (dp)</span>
+          <input type="number" id="col_dp" step="0.1" value="5" placeholder="5">
+          <select id="col_dp_u"><option>µm</option><option>nm</option></select>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--bordeaux);margin-bottom:0.7rem;">Phase & Porosité</div>
+        <div class="input-row">
+          <span class="input-label">Type de phase</span>
+          <select id="col_phase" onchange="updatePorosite()">
+            <option value="0.65">C18 / C8 sphérique</option>
+            <option value="0.68">Phényle / CN</option>
+            <option value="0.70">HILIC</option>
+            <option value="0.62">C18 sub-2µm (UHPLC)</option>
+            <option value="0.60">Monolithique</option>
+            <option value="custom">Personnalisée…</option>
+          </select>
+        </div>
+        <div class="input-row">
+          <span class="input-label">Porosité totale (εₜ)</span>
+          <input type="number" id="col_eps" step="0.01" value="0.65" min="0.4" max="0.9">
+          <span class="unit-label">(0.40 – 0.90)</span>
+        </div>
+        <div class="input-row">
+          <span class="input-label">Débit (F)</span>
+          <input type="number" id="col_F" step="0.01" value="1.0" placeholder="1.0">
+          <select id="col_Fu"><option>mL/min</option><option>µL/min</option></select>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--bordeaux);margin-bottom:0.7rem;">Ports & Connectique</div>
+        <div class="input-row">
+          <span class="input-label">Ø port (entrée)</span>
+          <input type="number" id="col_port_in" step="0.001" value="0.25" placeholder="0.25">
+          <select id="col_port_in_u"><option>mm</option><option>inch</option></select>
+        </div>
+        <div class="input-row">
+          <span class="input-label">Ø port (sortie)</span>
+          <input type="number" id="col_port_out" step="0.001" value="0.25" placeholder="0.25">
+          <select id="col_port_out_u"><option>mm</option><option>inch</option></select>
+        </div>
+        <div class="input-row">
+          <span class="input-label">Standard connexion</span>
+          <select id="col_fitting">
+            <option>1/16" — standard HPLC</option>
+            <option>1/32" — capillaire</option>
+            <option>1/4" — préparatif</option>
+            <option>Viper / PEEK (Thermo)</option>
+            <option>SealTight (Waters)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="calcColonne()">▶ Calculer tous les paramètres</button>
+      <button class="btn btn-copy" onclick="copyColonne()">📋 Copier fiche colonne</button>
+    </div>
+
+    <!-- RÉSULTATS PRINCIPAUX -->
+    <div id="col_result" style="display:none;margin-top:1.5rem;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:0.9rem;margin-bottom:1.4rem;">
+
+        <div style="background:linear-gradient(135deg,var(--bordeaux-dark),var(--bordeaux));border-radius:10px;padding:1.1rem 1.3rem;color:white;">
+          <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.8;">Volume mort V₀</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.25rem;font-weight:700;color:var(--gold-light);margin-top:0.3rem;" id="col_V0"></div>
+          <div style="font-size:0.7rem;opacity:0.7;margin-top:0.15rem;">π·(d/2)²·L·εₜ</div>
+        </div>
+
+        <div style="background:var(--beige-light);border-radius:10px;padding:1.1rem 1.3rem;border:1px solid var(--beige-dark);">
+          <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);">Temps mort t₀</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.25rem;font-weight:700;color:var(--bordeaux);margin-top:0.3rem;" id="col_t0"></div>
+          <div style="font-size:0.7rem;color:var(--text-light);margin-top:0.15rem;">V₀ / F</div>
+        </div>
+
+        <div style="background:var(--beige-light);border-radius:10px;padding:1.1rem 1.3rem;border:1px solid var(--beige-dark);">
+          <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);">Vitesse linéaire u</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.25rem;font-weight:700;color:var(--bordeaux);margin-top:0.3rem;" id="col_u"></div>
+          <div style="font-size:0.7rem;color:var(--text-light);margin-top:0.15rem;">F / (π·r²)</div>
+        </div>
+
+        <div style="background:var(--beige-light);border-radius:10px;padding:1.1rem 1.3rem;border:1px solid var(--beige-dark);">
+          <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);">u/uopt</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.25rem;font-weight:700;color:var(--bordeaux);margin-top:0.3rem;" id="col_uopt"></div>
+          <div style="font-size:0.7rem;color:var(--text-light);margin-top:0.15rem;">uopt ≈ 2–3 mm/s (C18)</div>
+        </div>
+
+        <div style="background:linear-gradient(135deg,#3A1A0A,#5C2A10);border-radius:10px;padding:1.1rem 1.3rem;color:white;">
+          <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.8;">N théorique max</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.25rem;font-weight:700;color:var(--gold-light);margin-top:0.3rem;" id="col_N"></div>
+          <div style="font-size:0.7rem;opacity:0.7;margin-top:0.15rem;">≈ L(mm) / dp(µm) × 2000</div>
+        </div>
+
+        <div style="background:var(--beige-light);border-radius:10px;padding:1.1rem 1.3rem;border:1px solid var(--beige-dark);">
+          <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);">Rapport L/dp</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.25rem;font-weight:700;color:var(--bordeaux);margin-top:0.3rem;" id="col_Ldp"></div>
+          <div style="font-size:0.7rem;color:var(--text-light);margin-top:0.15rem;">indicateur d'efficacité</div>
+        </div>
+
+      </div>
+
+      <!-- VOLUMES DE COLONNE & ÉQUILIBRATION -->
+      <div style="background:var(--beige-light);border-radius:10px;padding:1.2rem 1.5rem;border:1px solid var(--beige-dark);margin-bottom:1rem;">
+        <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--bordeaux);margin-bottom:1rem;">Volumes de colonne pour équilibration / lavage</div>
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="col_vc_table">
+            <thead>
+              <tr><th>Opération</th><th>Nb CV recommandé</th><th>Volume total</th><th>Temps estimé</th></tr>
+            </thead>
+            <tbody id="col_vc_body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DÉTAIL CALCUL -->
+      <div style="background:var(--beige-light);border-radius:8px;padding:1rem 1.2rem;border:1px solid var(--beige-dark);">
+        <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--bordeaux);margin-bottom:0.5rem;">Détail des calculs</div>
+        <div id="col_detail" style="font-family:'Courier Prime',monospace;font-size:0.8rem;line-height:1.9;white-space:pre-wrap;color:var(--text-mid);"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALCULATEUR NOMBRE DE VOLUMES DE COLONNE -->
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title"><span class="icon">🔢</span> Nombre de volumes de colonne</div>
+      <div class="card-formula">N_CV = V_élué / V₀</div>
+      <div class="explanation">
+        Calcule combien de volumes de colonne ont été élués, ou inversement le volume à éluer pour atteindre un nombre de CV cible.<br>
+        <em>Nécessite d'avoir calculé V₀ ci-dessus, ou de le saisir manuellement.</em>
+      </div>
+
+      <div class="input-row">
+        <span class="input-label">V₀ (volume mort)</span>
+        <input type="number" id="ncv_V0" step="0.001" placeholder="ex: 1.235" id="ncv_V0">
+        <span class="unit-label">mL</span>
+        <button onclick="autofillV0()" style="background:var(--bordeaux-pale);color:white;border:none;border-radius:5px;padding:0.3rem 0.6rem;font-size:0.7rem;cursor:pointer;font-weight:700;" title="Récupérer V₀ calculé ci-dessus">↑ Auto</button>
+      </div>
+      <div class="input-row">
+        <span class="input-label">Calculer</span>
+        <select id="ncv_mode">
+          <option value="ncv">N_CV → à partir d'un volume élué</option>
+          <option value="vol">Volume → à partir d'un N_CV cible</option>
+          <option value="time">Temps → à partir d'un N_CV cible</option>
+        </select>
+      </div>
+      <div class="input-row" id="ncv_row_velue">
+        <span class="input-label">Volume élué</span>
+        <input type="number" id="ncv_velue" step="any" placeholder="mL">
+        <span class="unit-label">mL</span>
+      </div>
+      <div class="input-row" id="ncv_row_target" style="display:none;">
+        <span class="input-label">N_CV cible</span>
+        <input type="number" id="ncv_target" step="0.5" placeholder="ex: 10">
+        <span class="unit-label">CV</span>
+      </div>
+      <div class="input-row" id="ncv_row_F" style="display:none;">
+        <span class="input-label">Débit</span>
+        <input type="number" id="ncv_F" step="0.01" placeholder="mL/min">
+        <span class="unit-label">mL/min</span>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="calcNCV()">Calculer</button>
+        <button class="btn btn-secondary" onclick="resetCard('ncv')">Réinitialiser</button>
+      </div>
+
+      <div class="result-box" id="ncv_result">
+        <button class="result-copy-btn" onclick="copyResult('ncv_result')">📋 Copier</button>
+        <div class="result-value" id="ncv_resVal"></div>
+        <div class="result-detail" id="ncv_resDetail"></div>
+      </div>
+    </div>
+
+    <!-- COMPARATEUR DE COLONNES -->
+    <div class="card">
+      <div class="card-title"><span class="icon">⚖</span> Comparateur de colonnes</div>
+      <div class="card-formula">F₂ = F₁ × (d₂/d₁)²</div>
+      <div class="explanation">
+        Compare deux colonnes et calcule le débit équivalent pour conserver la même vitesse linéaire lors d'un changement de format.<br>
+        <strong>Règle d'or :</strong> même L/dp = même résolution théorique.
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:0.8rem;">
+        <div style="background:var(--beige-light);border-radius:8px;padding:0.9rem;border:1px solid var(--beige-dark);">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--bordeaux);margin-bottom:0.6rem;text-transform:uppercase;letter-spacing:0.08em;">Colonne A (référence)</div>
+          <div class="input-row" style="margin-bottom:0.4rem;"><span style="font-size:0.78rem;min-width:40px;">L</span><input type="number" id="cmp_L1" step="1" value="150" style="width:80px;"><span class="unit-label">mm</span></div>
+          <div class="input-row" style="margin-bottom:0.4rem;"><span style="font-size:0.78rem;min-width:40px;">d</span><input type="number" id="cmp_d1" step="0.1" value="4.6" style="width:80px;"><span class="unit-label">mm</span></div>
+          <div class="input-row" style="margin-bottom:0.4rem;"><span style="font-size:0.78rem;min-width:40px;">dp</span><input type="number" id="cmp_dp1" step="0.1" value="5" style="width:80px;"><span class="unit-label">µm</span></div>
+          <div class="input-row" style="margin-bottom:0;"><span style="font-size:0.78rem;min-width:40px;">F</span><input type="number" id="cmp_F1" step="0.01" value="1.0" style="width:80px;"><span class="unit-label">mL/min</span></div>
+        </div>
+        <div style="background:var(--beige-light);border-radius:8px;padding:0.9rem;border:1px solid var(--beige-dark);">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--bordeaux);margin-bottom:0.6rem;text-transform:uppercase;letter-spacing:0.08em;">Colonne B (cible)</div>
+          <div class="input-row" style="margin-bottom:0.4rem;"><span style="font-size:0.78rem;min-width:40px;">L</span><input type="number" id="cmp_L2" step="1" value="100" style="width:80px;"><span class="unit-label">mm</span></div>
+          <div class="input-row" style="margin-bottom:0.4rem;"><span style="font-size:0.78rem;min-width:40px;">d</span><input type="number" id="cmp_d2" step="0.1" value="2.1" style="width:80px;"><span class="unit-label">mm</span></div>
+          <div class="input-row" style="margin-bottom:0.4rem;"><span style="font-size:0.78rem;min-width:40px;">dp</span><input type="number" id="cmp_dp2" step="0.1" value="1.8" style="width:80px;"><span class="unit-label">µm</span></div>
+          <div class="input-row" style="margin-bottom:0;"><span style="font-size:0.78rem;min-width:40px;">F?</span><span style="font-size:0.82rem;font-family:'Courier Prime',monospace;font-weight:700;color:var(--bordeaux);" id="cmp_F2_hint">— calculé</span></div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="calcComparateurCol()">Comparer</button>
+        <button class="btn btn-copy" onclick="copyCmp()">📋 Copier</button>
+      </div>
+
+      <div class="result-box" id="cmp_result">
+        <button class="result-copy-btn" onclick="copyResult('cmp_result')">📋 Copier</button>
+        <div class="result-value" id="cmp_resVal"></div>
+        <div class="result-detail" id="cmp_resDetail"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2218,6 +2460,246 @@ function copyRmul() {
   }
   navigator.clipboard.writeText(text);
   const btn = event.target; flashCopy(btn, '📋 Copier rapport');
+}
+
+// ─── COLONNE HPLC ─────────────────────────────────────────────
+function updatePorosite() {
+  const sel = document.getElementById('col_phase');
+  const val = sel.value;
+  const eps = document.getElementById('col_eps');
+  if (val !== 'custom') eps.value = val;
+}
+
+// Opérations de routine avec nb de volumes de colonne recommandés
+const CV_OPS = [
+  { op: 'Équilibration initiale (solvant A)', cv: 10, note: 'début de séquence' },
+  { op: 'Lavage colonne (solvant fort, 100% B)', cv: 5,  note: 'fin de séquence' },
+  { op: 'Ré-équilibration post-gradient', cv: 7,  note: 'entre injections' },
+  { op: 'Rinçage entre deux matrices différentes', cv: 3, note: 'changement matrice' },
+  { op: 'Conditionnement colonne neuve', cv: 20, note: 'première mise en service' },
+  { op: 'Stockage (solvant neutre, ex. MeOH/eau)', cv: 5, note: 'fin de journée' },
+];
+
+function calcColonne() {
+  const L_mm  = parseFloat(document.getElementById('col_L').value);
+  const d_mm  = parseFloat(document.getElementById('col_d').value);
+  const dpRaw = parseFloat(document.getElementById('col_dp').value);
+  const dpU   = document.getElementById('col_dp_u').value;
+  const eps   = parseFloat(document.getElementById('col_eps').value);
+  const Fraw  = parseFloat(document.getElementById('col_F').value);
+  const Fu    = document.getElementById('col_Fu').value;
+
+  if ([L_mm, d_mm, dpRaw, eps, Fraw].some(isNaN)) return alert('Veuillez remplir tous les champs.');
+
+  const dp_um = dpU === 'µm' ? dpRaw : dpRaw / 1000;
+  const F_mL  = Fu === 'mL/min' ? Fraw : Fraw / 1000;
+
+  // Géométrie
+  const r_cm  = (d_mm / 2) / 10;       // rayon en cm
+  const L_cm  = L_mm / 10;             // longueur en cm
+  const A_cm2 = Math.PI * r_cm * r_cm; // section transversale cm²
+
+  // Volume mort (mL)
+  const V0_mL = A_cm2 * L_cm * eps;
+
+  // Temps mort (min)
+  const t0_min = V0_mL / F_mL;
+
+  // Vitesse linéaire (mm/s)
+  const u_cm_min = F_mL / A_cm2;           // cm/min
+  const u_mm_s   = (u_cm_min * 10) / 60;   // mm/s
+
+  // uopt pour C18 ≈ 2 mm/s (règle Van Deemter empirique)
+  const uopt = 2.0;
+  const uRatio = u_mm_s / uopt;
+
+  // N théorique max ≈ (L_mm / dp_um) × 2000  (approximation pratique)
+  const N_theor = Math.round((L_mm / dp_um) * 2000);
+
+  // Rapport L/dp (sans unité — doit être converti : L en mm, dp en mm)
+  const dp_mm = dp_um / 1000;
+  const Ldp   = L_mm / dp_mm;
+
+  // Ports (info seulement)
+  const portIn  = parseFloat(document.getElementById('col_port_in').value);
+  const portInU = document.getElementById('col_port_in_u').value;
+  const portIn_mm = portInU === 'inch' ? portIn * 25.4 : portIn;
+
+  // Stocker V0 globalement pour autofill
+  window._col_V0   = V0_mL;
+  window._col_F    = F_mL;
+  window._col_t0   = t0_min;
+  window._col_u    = u_mm_s;
+
+  // Affichage résultats principaux
+  document.getElementById('col_V0').textContent   = `${numFmt(V0_mL)} mL`;
+  document.getElementById('col_t0').textContent   = `${numFmt(t0_min)} min`;
+  document.getElementById('col_u').textContent    = `${numFmt(u_mm_s)} mm/s`;
+
+  const uLabel = uRatio < 0.7
+    ? `${numFmt(uRatio)} ⚠ trop lent`
+    : uRatio <= 1.5
+    ? `${numFmt(uRatio)} ✓ optimal`
+    : `${numFmt(uRatio)} ⚠ trop rapide`;
+  document.getElementById('col_uopt').textContent  = uLabel;
+  document.getElementById('col_N').textContent     = N_theor.toLocaleString('fr-FR') + ' plateaux';
+  document.getElementById('col_Ldp').textContent   = Math.round(Ldp).toLocaleString('fr-FR');
+
+  // Tableau volumes de colonne
+  const tbody = document.getElementById('col_vc_body');
+  tbody.innerHTML = '';
+  CV_OPS.forEach(op => {
+    const vol  = op.cv * V0_mL;
+    const time = vol / F_mL;
+    tbody.innerHTML += `<tr>
+      <td>${op.op} <span style="font-size:0.72rem;color:var(--text-light);">(${op.note})</span></td>
+      <td style="text-align:center;font-weight:700;color:var(--bordeaux);">${op.cv} CV</td>
+      <td style="font-family:'Courier Prime',monospace;font-weight:700;">${numFmt(vol)} mL</td>
+      <td style="font-family:'Courier Prime',monospace;">${numFmt(time)} min</td>
+    </tr>`;
+  });
+
+  // Détail calcul
+  const fitting = document.getElementById('col_fitting').value;
+  document.getElementById('col_detail').textContent =
+    `Colonne : L=${L_mm} mm × d=${d_mm} mm · dp=${dp_um} µm · εₜ=${eps}\n` +
+    `Connexion : ${fitting} · Ø port entrée = ${numFmt(portIn_mm)} mm\n` +
+    `\n` +
+    `V₀ = π × (${numFmt(d_mm/2)} mm / 10)² × ${numFmt(L_cm)} cm × ${eps}\n` +
+    `   = π × ${numFmt(r_cm)}² × ${numFmt(L_cm)} × ${eps}\n` +
+    `   = ${numFmt(A_cm2 * L_cm)} cm³ × ${eps} = ${numFmt(V0_mL)} mL\n` +
+    `\n` +
+    `t₀  = V₀ / F = ${numFmt(V0_mL)} / ${numFmt(F_mL)} = ${numFmt(t0_min)} min\n` +
+    `u   = F / A = ${numFmt(F_mL)} cm³/min / ${numFmt(A_cm2)} cm²\n` +
+    `    = ${numFmt(u_cm_min)} cm/min = ${numFmt(u_mm_s)} mm/s\n` +
+    `N   ≈ (L/dp) × 2000 = (${L_mm}/${dp_um}) × 2000 = ${N_theor.toLocaleString('fr-FR')} plateaux\n` +
+    `L/dp = ${L_mm} mm / ${numFmt(dp_mm)} mm = ${Math.round(Ldp).toLocaleString('fr-FR')}`;
+
+  document.getElementById('col_result').style.display = 'block';
+
+  // Autofill NCV
+  document.getElementById('ncv_V0').value = numFmt(V0_mL);
+}
+
+function copyColonne() {
+  const detail = document.getElementById('col_detail').textContent;
+  if (!detail) return alert('Calculez d\'abord les paramètres.');
+  const fitting = document.getElementById('col_fitting').value;
+  const text = `=== FICHE COLONNE HPLC ===\n${detail}\n\nConnexion : ${fitting}`;
+  navigator.clipboard.writeText(text);
+  const btn = event.target; flashCopy(btn, '📋 Copier fiche colonne');
+}
+
+// ─── NOMBRE DE VOLUMES DE COLONNE ────────────────────────────
+document.getElementById('ncv_mode').addEventListener('change', function() {
+  const m = this.value;
+  document.getElementById('ncv_row_velue').style.display  = m === 'ncv'  ? 'flex' : 'none';
+  document.getElementById('ncv_row_target').style.display = m !== 'ncv'  ? 'flex' : 'none';
+  document.getElementById('ncv_row_F').style.display      = m === 'time' ? 'flex' : 'none';
+});
+
+function autofillV0() {
+  if (window._col_V0) {
+    document.getElementById('ncv_V0').value = numFmt(window._col_V0);
+    if (window._col_F) document.getElementById('ncv_F').value = numFmt(window._col_F);
+  } else {
+    alert('Calculez d\'abord les paramètres colonne ci-dessus.');
+  }
+}
+
+function calcNCV() {
+  const V0   = parseFloat(document.getElementById('ncv_V0').value);
+  const mode = document.getElementById('ncv_mode').value;
+  if (isNaN(V0) || V0 <= 0) return alert('Saisissez un volume mort V₀ valide.');
+
+  let resVal, resDetail;
+
+  if (mode === 'ncv') {
+    const Ve = parseFloat(document.getElementById('ncv_velue').value);
+    if (isNaN(Ve)) return alert('Saisissez le volume élué.');
+    const ncv = Ve / V0;
+    resVal   = `N_CV = ${numFmt(ncv)} volumes de colonne`;
+    resDetail = `N_CV = V_élué / V₀ = ${numFmt(Ve)} / ${numFmt(V0)} = ${numFmt(ncv)} CV`;
+  } else if (mode === 'vol') {
+    const target = parseFloat(document.getElementById('ncv_target').value);
+    if (isNaN(target)) return alert('Saisissez le nombre de CV cible.');
+    const vol = target * V0;
+    resVal   = `Volume à éluer = ${numFmt(vol)} mL`;
+    resDetail = `V = N_CV × V₀ = ${target} × ${numFmt(V0)} = ${numFmt(vol)} mL`;
+  } else {
+    const target = parseFloat(document.getElementById('ncv_target').value);
+    const F = parseFloat(document.getElementById('ncv_F').value);
+    if (isNaN(target) || isNaN(F)) return alert('Saisissez le nombre de CV cible et le débit.');
+    const vol  = target * V0;
+    const time = vol / F;
+    resVal   = `Temps = ${numFmt(time)} min`;
+    resDetail = `V = ${target} × ${numFmt(V0)} = ${numFmt(vol)} mL\nTemps = V / F = ${numFmt(vol)} / ${numFmt(F)} = ${numFmt(time)} min`;
+  }
+
+  document.getElementById('ncv_resVal').textContent   = resVal;
+  document.getElementById('ncv_resDetail').textContent = resDetail;
+  document.getElementById('ncv_result').classList.add('show');
+}
+
+// ─── COMPARATEUR DE COLONNES ──────────────────────────────────
+function calcComparateurCol() {
+  const L1  = parseFloat(document.getElementById('cmp_L1').value);
+  const d1  = parseFloat(document.getElementById('cmp_d1').value);
+  const dp1 = parseFloat(document.getElementById('cmp_dp1').value);
+  const F1  = parseFloat(document.getElementById('cmp_F1').value);
+  const L2  = parseFloat(document.getElementById('cmp_L2').value);
+  const d2  = parseFloat(document.getElementById('cmp_d2').value);
+  const dp2 = parseFloat(document.getElementById('cmp_dp2').value);
+
+  if ([L1,d1,dp1,F1,L2,d2,dp2].some(isNaN)) return alert('Remplissez tous les champs.');
+
+  // Débit équivalent (même vitesse linéaire) : F₂ = F₁ × (d₂/d₁)²
+  const F2 = F1 * Math.pow(d2 / d1, 2);
+
+  // Temps d'analyse équivalent (même nombre de plateaux) : t₂ = t₁ × (L₂/L₁) × (d₁/d₂)²
+  // N1 et N2
+  const N1 = Math.round((L1 / dp1) * 2000);
+  const N2 = Math.round((L2 / dp2) * 2000);
+  const Ldp1 = (L1 / dp1 * 1000); // L en µm / dp en µm = sans unité si L en mm et dp en µm → L(mm)*1000/dp(µm)
+  const Ldp2 = (L2 / dp2 * 1000);
+
+  // V0 (εₜ = 0.65 par défaut pour comparaison)
+  const eps = 0.65;
+  const V01 = Math.PI * Math.pow(d1/2/10, 2) * (L1/10) * eps;
+  const V02 = Math.PI * Math.pow(d2/2/10, 2) * (L2/10) * eps;
+  const t01 = V01 / F1;
+  const t02 = V02 / F2;
+
+  const eqN  = Math.abs(N1 - N2) / N1 * 100;
+  const statusN = eqN <= 10
+    ? '<span class="badge badge-pass">✓ Efficacité équivalente (ΔN ≤ 10%)</span>'
+    : eqN <= 25
+    ? '<span class="badge badge-warn">⚠ Efficacité similaire (ΔN ≤ 25%)</span>'
+    : '<span class="badge badge-fail">✗ Efficacités différentes (ΔN > 25%)</span>';
+
+  document.getElementById('cmp_resVal').textContent =
+    `F₂ = ${numFmt(F2)} mL/min  |  V₀B = ${numFmt(V02)} mL  |  t₀B = ${numFmt(t02)} min`;
+  document.getElementById('cmp_resDetail').textContent =
+    `F₂ = F₁ × (d₂/d₁)² = ${F1} × (${d2}/${d1})² = ${numFmt(F2)} mL/min\n` +
+    `V₀A = ${numFmt(V01)} mL  →  V₀B = ${numFmt(V02)} mL\n` +
+    `t₀A = ${numFmt(t01)} min  →  t₀B = ${numFmt(t02)} min\n` +
+    `NA ≈ ${N1.toLocaleString('fr-FR')} plat.  |  NB ≈ ${N2.toLocaleString('fr-FR')} plat.  |  ΔN = ${numFmt(eqN)}%`;
+
+  document.getElementById('cmp_F2_hint').textContent = `${numFmt(F2)} mL/min`;
+  document.getElementById('cmp_result').classList.add('show');
+
+  // Inject badge into detail
+  setTimeout(() => {
+    const det = document.getElementById('cmp_resDetail');
+    det.innerHTML = det.innerHTML + '<br><br>' + statusN;
+  }, 50);
+}
+
+function copyCmp() {
+  const v = document.getElementById('cmp_resVal').textContent;
+  const d = document.getElementById('cmp_resDetail').textContent;
+  navigator.clipboard.writeText(`=== COMPARATEUR COLONNES HPLC ===\n${v}\n${d}`);
+  const btn = event.target; flashCopy(btn, '📋 Copier');
 }
 
 // ─── INIT ─────────────────────────────────────────────────────

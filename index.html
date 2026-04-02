@@ -510,7 +510,7 @@
       <div class="logo-sub">Outils Analytiques · Laboratoire</div>
     </div>
     <div style="color:var(--beige-dark);font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;">
-      HPLC · UV/DAD · Validation
+      Outils Analytiques
     </div>
   </div>
 </header>
@@ -524,6 +524,8 @@
     <button class="nav-tab" onclick="showSection('incert')"><span class="tab-icon">±</span>Incertitude</button>
     <button class="nav-tab" onclick="showSection('recup')"><span class="tab-icon">🔄</span>Récupération</button>
     <button class="nav-tab" onclick="showSection('colonne')"><span class="tab-icon">🏛</span>Colonne HPLC</button>
+    <button class="nav-tab" onclick="showSection('dsp')"><span class="tab-icon">🧬</span>Bilan DSP</button>
+    <button class="nav-tab" onclick="showSection('gc')"><span class="tab-icon">🔥</span>Colonne GC</button>
   </div>
 </nav>
 
@@ -736,19 +738,15 @@
 <!-- ═══════════════════════════════════════════ GAMME HPLC ═══ -->
 <div class="section" id="gamme">
   <div class="section-title">Générateur de Gamme HPLC</div>
-  <div class="section-desc">Saisie des points de gamme, régression linéaire et exploitation des résultats</div>
+  <div class="section-desc">Saisie des points de gamme, régression linéaire, volume d'injection et étalon interne</div>
 
   <div class="card-full">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
-      <div>
-        <div class="card-title" style="margin-bottom:0.3rem;"><span class="icon">⚙</span> Configuration de la gamme</div>
-      </div>
-    </div>
+    <div class="card-title" style="margin-bottom:1.2rem;"><span class="icon">⚙</span> Configuration de la gamme</div>
 
-    <div style="display:flex;gap:2rem;flex-wrap:wrap;margin-bottom:1.5rem;">
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:1rem;">
       <div class="input-row">
         <span class="input-label">Composé</span>
-        <input type="text" id="g_compound" style="width:160px;" placeholder="ex: Caféine">
+        <input type="text" id="g_compound" style="width:150px;" placeholder="ex: Caféine">
       </div>
       <div class="input-row">
         <span class="input-label">Signal mesuré</span>
@@ -766,6 +764,11 @@
         </select>
       </div>
       <div class="input-row">
+        <span class="input-label">Volume injection</span>
+        <input type="number" id="g_vinj" step="0.1" value="10" style="width:80px;" placeholder="10">
+        <span class="unit-label">µL</span>
+      </div>
+      <div class="input-row">
         <span class="input-label">Nb de points</span>
         <select id="g_npts" onchange="buildGammeTable()">
           <option value="5">5 points</option>
@@ -778,19 +781,51 @@
       </div>
     </div>
 
+    <!-- MODE ÉTALON INTERNE -->
+    <div style="background:var(--beige-light);border-radius:10px;padding:1rem 1.2rem;border:1px solid var(--beige-dark);margin-bottom:1.2rem;">
+      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:700;font-size:0.85rem;color:var(--bordeaux);">
+          <input type="checkbox" id="g_ei_mode" onchange="toggleEIMode()" style="accent-color:var(--bordeaux);width:16px;height:16px;">
+          Utiliser un étalon interne (EI)
+        </label>
+        <div id="g_ei_fields" style="display:none;display:flex;gap:1rem;flex-wrap:wrap;align-items:center;">
+          <div class="input-row" style="margin-bottom:0;">
+            <span class="input-label" style="min-width:120px;">Nom EI</span>
+            <input type="text" id="g_ei_name" style="width:130px;" placeholder="ex: Anthracène-d10">
+          </div>
+          <div class="input-row" style="margin-bottom:0;">
+            <span class="input-label" style="min-width:120px;">Conc. EI (fixe)</span>
+            <input type="number" id="g_ei_conc" step="any" style="width:90px;" placeholder="ex: 50">
+            <span class="unit-label" id="g_ei_unit_lbl">mg/L</span>
+          </div>
+        </div>
+      </div>
+      <div id="g_ei_expl" style="display:none;font-size:0.78rem;color:var(--text-mid);margin-top:0.7rem;line-height:1.6;border-top:1px solid var(--beige-dark);padding-top:0.6rem;">
+        <strong style="color:var(--bordeaux);">Principe de l'étalon interne :</strong>
+        Une quantité fixe et connue d'un composé de référence (EI) est ajoutée à <em>chaque</em> étalon et chaque échantillon avant l'analyse.
+        Le signal de l'analyte est normalisé par le signal de l'EI : <strong>Rapport = Aire_analyte / Aire_EI</strong>.<br>
+        La droite de calibration est tracée sur les <strong>rapports de signaux</strong> vs concentration, ce qui compense les variations d'injection, d'évaporation et de dérive instrumentale.
+        <br><strong>Condition :</strong> l'EI ne doit pas co-éluer avec l'analyte, ni réagir avec la matrice.
+      </div>
+    </div>
+
     <div style="overflow-x:auto;">
       <table class="data-table" id="gammeTable">
         <thead>
           <tr>
             <th>#</th>
             <th id="concHeader">Concentration (mg/L)</th>
-            <th id="signalHeader">Signal (Aire)</th>
+            <th id="signalHeader">Signal analyte</th>
+            <th id="g_ei_col_header" style="display:none;">Signal EI</th>
+            <th id="g_ratio_col_header" style="display:none;">Rapport A/EI</th>
             <th>Inclure</th>
           </tr>
         </thead>
         <tbody id="gammeBody"></tbody>
       </table>
     </div>
+
+    <div style="margin-top:0.6rem;font-size:0.75rem;color:var(--text-light);font-style:italic;" id="g_vinj_note"></div>
 
     <div class="btn-row" style="margin-top:1.2rem;">
       <button class="btn btn-primary" onclick="calcGamme()">▶ Calculer Régression</button>
@@ -800,10 +835,10 @@
 
     <div id="gammeResult" style="display:none;margin-top:1.5rem;">
       <div class="divider"></div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-bottom:1.5rem;">
         <div style="background:linear-gradient(135deg,var(--bordeaux-dark),var(--bordeaux));border-radius:10px;padding:1.2rem;color:white;">
-          <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.8;margin-bottom:0.4rem;">Équation de régression</div>
-          <div style="font-family:'Courier Prime',monospace;font-size:1.1rem;font-weight:700;color:var(--gold-light);" id="g_equation"></div>
+          <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.8;margin-bottom:0.4rem;" id="g_eq_label">Équation de régression</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.05rem;font-weight:700;color:var(--gold-light);" id="g_equation"></div>
         </div>
         <div style="background:var(--beige-light);border-radius:10px;padding:1.2rem;border:1px solid var(--beige-dark);">
           <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);margin-bottom:0.4rem;">Coefficient R²</div>
@@ -814,14 +849,24 @@
           <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);margin-bottom:0.4rem;">Pente / Ordonnée</div>
           <div style="font-family:'Courier Prime',monospace;font-size:0.9rem;font-weight:700;color:var(--bordeaux);" id="g_slopeInt"></div>
         </div>
+        <div style="background:var(--beige-light);border-radius:10px;padding:1.2rem;border:1px solid var(--beige-dark);">
+          <div style="font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);margin-bottom:0.4rem;">Volume injecté</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.1rem;font-weight:700;color:var(--bordeaux);" id="g_vinj_disp"></div>
+        </div>
       </div>
 
       <!-- Retro-calcul -->
       <div style="background:var(--beige-light);border-radius:10px;padding:1.2rem;border:1px solid var(--beige-dark);margin-bottom:1rem;">
         <div class="card-title" style="font-size:1rem;margin-bottom:0.8rem;"><span class="icon">🔎</span> Rétro-calcul : Signal → Concentration</div>
-        <div class="input-row">
-          <span class="input-label">Signal mesuré</span>
-          <input type="number" id="g_retroSignal" step="any" placeholder="Saisir signal">
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center;">
+          <div class="input-row" style="margin-bottom:0;">
+            <span class="input-label">Signal analyte</span>
+            <input type="number" id="g_retroSignal" step="any" placeholder="Saisir signal">
+          </div>
+          <div class="input-row" id="g_retro_ei_row" style="display:none;margin-bottom:0;">
+            <span class="input-label">Signal EI</span>
+            <input type="number" id="g_retroEI" step="any" placeholder="Signal EI">
+          </div>
           <button class="btn btn-primary" style="padding:0.5rem 1rem;font-size:0.75rem;" onclick="retroCalc()">Calculer C</button>
         </div>
         <div id="g_retroResult" style="font-family:'Courier Prime',monospace;font-size:0.95rem;color:var(--bordeaux);font-weight:700;margin-top:0.5rem;display:none;"></div>
@@ -1600,6 +1645,329 @@
         <div class="result-value" id="cmp_resVal"></div>
         <div class="result-detail" id="cmp_resDetail"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ BILAN DE MASSE DSP ═══ -->
+<div class="section" id="dsp">
+  <div class="section-title">Bilan de Masse — DSP / Downstream Processing</div>
+  <div class="section-desc">Yield, facteur de purification et bilan global pour chaque étape du procédé de purification</div>
+
+  <div class="card-full" style="margin-bottom:1.5rem;">
+    <div class="card-title" style="margin-bottom:0.8rem;"><span class="icon">🧬</span> Configuration du procédé</div>
+    <div class="explanation">
+      Saisissez les données de chaque étape : volume de fraction, concentration protéique (ou activité enzymatique), et volume éliminé (culot, perméat, lavage…).<br>
+      <strong>Yield%</strong> = (Masse sortante / Masse initiale) × 100 &nbsp;|&nbsp;
+      <strong>FP</strong> = (Activité spécifique étape n) / (Activité spécifique étape 1) &nbsp;|&nbsp;
+      <strong>Masse</strong> = C × V
+    </div>
+
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:1.2rem;">
+      <div class="input-row">
+        <span class="input-label">Nom du lot / batch</span>
+        <input type="text" id="dsp_batch" style="width:160px;" placeholder="ex: Batch-2024-01">
+      </div>
+      <div class="input-row">
+        <span class="input-label">Unité de masse</span>
+        <select id="dsp_munit">
+          <option>mg</option><option>g</option><option>µg</option><option>U (activité)</option>
+        </select>
+      </div>
+      <div class="input-row">
+        <span class="input-label">Mode activité spéc.</span>
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;cursor:pointer;">
+          <input type="checkbox" id="dsp_activity_mode" onchange="toggleDSPActivity()" style="accent-color:var(--bordeaux);width:15px;height:15px;">
+          Inclure activité enzymatique (U/mg)
+        </label>
+      </div>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table class="data-table" id="dsp_table">
+        <thead>
+          <tr>
+            <th>Étape</th>
+            <th>Type</th>
+            <th>Volume (mL)</th>
+            <th>Conc. (mg/mL)</th>
+            <th id="dsp_act_header" style="display:none;">Activité (U/mL)</th>
+            <th>Masse totale</th>
+            <th>Yield%</th>
+            <th>FP</th>
+            <th id="dsp_as_header" style="display:none;">Act. spéc. (U/mg)</th>
+          </tr>
+        </thead>
+        <tbody id="dsp_body"></tbody>
+      </table>
+    </div>
+
+    <div class="btn-row" style="margin-top:1rem;">
+      <button class="btn btn-secondary" onclick="addDSPStep()" style="font-size:0.75rem;">+ Ajouter étape</button>
+      <button class="btn btn-primary" onclick="calcDSP()">▶ Calculer bilan</button>
+      <button class="btn btn-copy" onclick="copyDSP()">📋 Copier rapport</button>
+    </div>
+
+    <div id="dsp_result" style="display:none;margin-top:1.5rem;">
+      <div class="divider"></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.9rem;margin-bottom:1.2rem;">
+        <div style="background:linear-gradient(135deg,var(--bordeaux-dark),var(--bordeaux));border-radius:10px;padding:1.1rem;color:white;">
+          <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.8;">Masse initiale</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.2rem;font-weight:700;color:var(--gold-light);margin-top:0.3rem;" id="dsp_m0"></div>
+        </div>
+        <div style="background:linear-gradient(135deg,#1A3A1A,#2E5A2E);border-radius:10px;padding:1.1rem;color:white;">
+          <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.8;">Masse finale</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.2rem;font-weight:700;color:#90EE90;margin-top:0.3rem;" id="dsp_mf"></div>
+        </div>
+        <div style="background:var(--beige-light);border-radius:10px;padding:1.1rem;border:1px solid var(--beige-dark);">
+          <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);">Yield global</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.2rem;font-weight:700;color:var(--bordeaux);margin-top:0.3rem;" id="dsp_yield_global"></div>
+        </div>
+        <div style="background:var(--beige-light);border-radius:10px;padding:1.1rem;border:1px solid var(--beige-dark);">
+          <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);">FP global</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.2rem;font-weight:700;color:var(--bordeaux);margin-top:0.3rem;" id="dsp_fp_global"></div>
+        </div>
+        <div style="background:var(--beige-light);border-radius:10px;padding:1.1rem;border:1px solid var(--beige-dark);">
+          <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);">Nb d'étapes</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.2rem;font-weight:700;color:var(--bordeaux);margin-top:0.3rem;" id="dsp_nsteps"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÉTAPES PRÉDÉFINIES DSP -->
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title"><span class="icon">🌀</span> Centrifugation / Clarification</div>
+      <div class="card-formula">Yield = V_surnageant × C_surn / (V_tot × C_tot) × 100</div>
+      <div class="explanation">
+        <strong>Objectif :</strong> élimination des cellules, débris et agrégats.<br>
+        <strong>Perte typique :</strong> 5–20% selon la clarté du surnageant.<br>
+        Calculer le volume de culot éliminé et la concentration dans le surnageant.
+      </div>
+      <div class="input-row"><span class="input-label">V total initial</span><input type="number" id="cent_vtot" step="any" placeholder="mL"><span class="unit-label">mL</span></div>
+      <div class="input-row"><span class="input-label">C initiale</span><input type="number" id="cent_ctot" step="any" placeholder="mg/mL"><span class="unit-label">mg/mL</span></div>
+      <div class="input-row"><span class="input-label">V surnageant</span><input type="number" id="cent_vsurn" step="any" placeholder="mL"><span class="unit-label">mL</span></div>
+      <div class="input-row"><span class="input-label">C surnageant</span><input type="number" id="cent_csurn" step="any" placeholder="mg/mL"><span class="unit-label">mg/mL</span></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="calcCent()">Calculer</button>
+        <button class="btn btn-copy" onclick="copyResult('cent_result')">📋 Copier</button>
+      </div>
+      <div class="result-box" id="cent_result">
+        <button class="result-copy-btn" onclick="copyResult('cent_result')">📋 Copier</button>
+        <div class="result-value" id="cent_resVal"></div>
+        <div class="result-detail" id="cent_resDetail"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🔲</span> Filtration TFF / UF</div>
+      <div class="card-formula">FRV = V_initial / V_final &nbsp;|&nbsp; Yield = m_rétentat / m_initial</div>
+      <div class="explanation">
+        <strong>FRV</strong> = Facteur de Réduction de Volume · <strong>Rétentat</strong> = fraction concentrée (produit d'intérêt) · <strong>Perméat</strong> = fraction éliminée.<br>
+        En diafiltration : N_dv = V_DF / V_rétentat (volumes de diafiltration).
+      </div>
+      <div class="input-row"><span class="input-label">V initial</span><input type="number" id="tff_vi" step="any" placeholder="mL"><span class="unit-label">mL</span></div>
+      <div class="input-row"><span class="input-label">C initiale</span><input type="number" id="tff_ci" step="any" placeholder="mg/mL"><span class="unit-label">mg/mL</span></div>
+      <div class="input-row"><span class="input-label">V rétentat final</span><input type="number" id="tff_vf" step="any" placeholder="mL"><span class="unit-label">mL</span></div>
+      <div class="input-row"><span class="input-label">C rétentat</span><input type="number" id="tff_cf" step="any" placeholder="mg/mL"><span class="unit-label">mg/mL</span></div>
+      <div class="input-row"><span class="input-label">V diafiltration</span><input type="number" id="tff_vdf" step="any" value="0" placeholder="0"><span class="unit-label">mL (0 si N/A)</span></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="calcTFF()">Calculer</button>
+        <button class="btn btn-copy" onclick="copyResult('tff_result')">📋 Copier</button>
+      </div>
+      <div class="result-box" id="tff_result">
+        <button class="result-copy-btn" onclick="copyResult('tff_result')">📋 Copier</button>
+        <div class="result-value" id="tff_resVal"></div>
+        <div class="result-detail" id="tff_resDetail"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">❄</span> Précipitation / Lyophilisation</div>
+      <div class="card-formula">Yield = m_récupérée / m_initiale × 100</div>
+      <div class="explanation">
+        <strong>Précipitation :</strong> masse du précipité résuspendu vs masse initiale en solution.<br>
+        <strong>Lyophilisation :</strong> masse de poudre obtenue vs masse protéique dans la solution initiale à lyophiliser. Inclut le calcul de la teneur en eau résiduelle si masse de lyophilisat connue.
+      </div>
+      <div class="input-row"><span class="input-label">Type d'étape</span>
+        <select id="prec_type" onchange="togglePrecType()">
+          <option value="prec">Précipitation</option>
+          <option value="lyoph">Lyophilisation</option>
+        </select>
+      </div>
+      <div class="input-row"><span class="input-label">Masse initiale</span><input type="number" id="prec_mi" step="any" placeholder="mg"><span class="unit-label">mg</span></div>
+      <div class="input-row"><span class="input-label">Masse récupérée</span><input type="number" id="prec_mf" step="any" placeholder="mg"><span class="unit-label">mg</span></div>
+      <div class="input-row" id="prec_lyoph_row" style="display:none;">
+        <span class="input-label">Masse lyophilisat</span><input type="number" id="prec_mlyoph" step="any" placeholder="mg total"><span class="unit-label">mg total</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="calcPrec()">Calculer</button>
+        <button class="btn btn-copy" onclick="copyResult('prec_result')">📋 Copier</button>
+      </div>
+      <div class="result-box" id="prec_result">
+        <button class="result-copy-btn" onclick="copyResult('prec_result')">📋 Copier</button>
+        <div class="result-value" id="prec_resVal"></div>
+        <div class="result-detail" id="prec_resDetail"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════ COLONNE GC ══════ -->
+<div class="section" id="gc">
+  <div class="section-title">Colonne GC — Paramètres & Flow/Pression</div>
+  <div class="section-desc">Volume colonne, vitesse linéaire optimale, N théorique et conversion Pression ↔ Débit pour He, H₂, N₂</div>
+
+  <div class="card-full" style="margin-bottom:1.5rem;">
+    <div class="card-title" style="margin-bottom:0.8rem;"><span class="icon">🔥</span> Géométrie de la colonne capillaire</div>
+    <div class="explanation">
+      Colonne capillaire GC : <strong>L</strong> = longueur · <strong>d<sub>i</sub></strong> = diamètre interne · <strong>d<sub>f</sub></strong> = épaisseur du film de phase stationnaire.<br>
+      <strong>V<sub>col</sub></strong> = π × (d<sub>i</sub>/2)² × L &nbsp;|&nbsp;
+      <strong>N</strong> ≈ L × (1 + 6k + 11k²) / (terme HETP) &nbsp;|&nbsp;
+      <strong>u<sub>opt</sub></strong> varie selon le gaz vecteur et d<sub>i</sub>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.2rem;margin-bottom:1.2rem;">
+      <div>
+        <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--bordeaux);margin-bottom:0.7rem;">Dimensions colonne</div>
+        <div class="input-row"><span class="input-label">Longueur (L)</span><input type="number" id="gc_L" step="1" value="30" placeholder="30"><span class="unit-label">m</span></div>
+        <div class="input-row"><span class="input-label">Ø interne (dᵢ)</span><input type="number" id="gc_di" step="0.01" value="0.25" placeholder="0.25"><span class="unit-label">mm</span></div>
+        <div class="input-row"><span class="input-label">Film (dᶠ)</span><input type="number" id="gc_df" step="0.01" value="0.25" placeholder="0.25"><span class="unit-label">µm</span></div>
+        <div class="input-row"><span class="input-label">Phase stationnaire</span>
+          <select id="gc_phase" style="width:140px;">
+            <option>DB-5 / HP-5 (5% phényl)</option>
+            <option>DB-1 / HP-1 (100% diméthyl)</option>
+            <option>DB-17 (50% phényl)</option>
+            <option>DB-WAX (polyéthylèneglycol)</option>
+            <option>DB-FFAP (acides gras)</option>
+            <option>Autre</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--bordeaux);margin-bottom:0.7rem;">Gaz vecteur & Conditions</div>
+        <div class="input-row"><span class="input-label">Gaz vecteur</span>
+          <select id="gc_gas" onchange="updateGCGas()">
+            <option value="He">Hélium (He)</option>
+            <option value="H2">Hydrogène (H₂)</option>
+            <option value="N2">Azote (N₂)</option>
+          </select>
+        </div>
+        <div class="input-row"><span class="input-label">T° colonne (moy.)</span><input type="number" id="gc_T" step="1" value="150" placeholder="150"><span class="unit-label">°C</span></div>
+        <div class="input-row"><span class="input-label">Pression entrée (Pi)</span><input type="number" id="gc_Pi" step="0.1" value="1.5" placeholder="1.5">
+          <select id="gc_Pu"><option>bar</option><option>psi</option><option>kPa</option></select>
+        </div>
+        <div class="input-row"><span class="input-label">Pression sortie (Po)</span><input type="number" id="gc_Po" step="0.01" value="1.013" placeholder="1.013"><span class="unit-label">bar (atm)</span></div>
+      </div>
+      <div>
+        <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--bordeaux);margin-bottom:0.7rem;">Info gaz vecteur</div>
+        <div id="gc_gas_info" style="background:var(--beige-light);border-radius:8px;padding:0.9rem;border:1px solid var(--beige-dark);font-size:0.8rem;line-height:1.8;font-family:'Courier Prime',monospace;color:var(--text-mid);"></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="calcGC()">▶ Calculer paramètres GC</button>
+      <button class="btn btn-copy" onclick="copyGC()">📋 Copier fiche GC</button>
+    </div>
+
+    <div id="gc_result" style="display:none;margin-top:1.5rem;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:0.9rem;margin-bottom:1.2rem;">
+        <div style="background:linear-gradient(135deg,var(--bordeaux-dark),var(--bordeaux));border-radius:10px;padding:1rem 1.2rem;color:white;">
+          <div style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.8;">Volume colonne</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.1rem;font-weight:700;color:var(--gold-light);margin-top:0.3rem;" id="gc_Vcol"></div>
+          <div style="font-size:0.65rem;opacity:0.7;">π·(dᵢ/2)²·L</div>
+        </div>
+        <div style="background:var(--beige-light);border-radius:10px;padding:1rem 1.2rem;border:1px solid var(--beige-dark);">
+          <div style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);">Débit (colonne)</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.1rem;font-weight:700;color:var(--bordeaux);margin-top:0.3rem;" id="gc_F"></div>
+          <div style="font-size:0.65rem;color:var(--text-light);">Hagen-Poiseuille</div>
+        </div>
+        <div style="background:var(--beige-light);border-radius:10px;padding:1rem 1.2rem;border:1px solid var(--beige-dark);">
+          <div style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);">Vitesse linéaire u</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.1rem;font-weight:700;color:var(--bordeaux);margin-top:0.3rem;" id="gc_u"></div>
+          <div style="font-size:0.65rem;color:var(--text-light);">u = F / A</div>
+        </div>
+        <div style="background:var(--beige-light);border-radius:10px;padding:1rem 1.2rem;border:1px solid var(--beige-dark);">
+          <div style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);">u<sub>opt</sub> (Van Deemter)</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.1rem;font-weight:700;color:var(--bordeaux);margin-top:0.3rem;" id="gc_uopt_val"></div>
+          <div style="font-size:0.65rem;color:var(--text-light);" id="gc_uopt_status"></div>
+        </div>
+        <div style="background:linear-gradient(135deg,#1A2A3A,#2A3A5A);border-radius:10px;padding:1rem 1.2rem;color:white;">
+          <div style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.8;">N théorique</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.1rem;font-weight:700;color:var(--gold-light);margin-top:0.3rem;" id="gc_N"></div>
+          <div style="font-size:0.65rem;opacity:0.7;">≈ L(m)×3333/HETP</div>
+        </div>
+        <div style="background:var(--beige-light);border-radius:10px;padding:1rem 1.2rem;border:1px solid var(--beige-dark);">
+          <div style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-light);">t₀ (temps mort)</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:1.1rem;font-weight:700;color:var(--bordeaux);margin-top:0.3rem;" id="gc_t0"></div>
+          <div style="font-size:0.65rem;color:var(--text-light);">L / u</div>
+        </div>
+      </div>
+
+      <div style="background:var(--beige-light);border-radius:8px;padding:1rem 1.2rem;border:1px solid var(--beige-dark);">
+        <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--bordeaux);margin-bottom:0.5rem;">Détail des calculs</div>
+        <div id="gc_detail" style="font-family:'Courier Prime',monospace;font-size:0.78rem;line-height:1.9;white-space:pre-wrap;color:var(--text-mid);"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONVERTISSEUR PRESSION <-> DÉBIT -->
+  <div class="card-full">
+    <div class="card-title" style="margin-bottom:0.8rem;"><span class="icon">⚡</span> Convertisseur Pression ↔ Débit (Hagen-Poiseuille GC)</div>
+    <div class="explanation">
+      Loi de Hagen-Poiseuille compressible (Golay) pour colonnes capillaires GC :<br>
+      <strong>F = π·d<sub>i</sub>⁴·(P<sub>i</sub>²−P<sub>o</sub>²) / (256·η·L·P<sub>o</sub>)</strong> &nbsp; (débit en tête de colonne, à P<sub>o</sub>)<br>
+      où η = viscosité dynamique du gaz à la température de travail (µPa·s)
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.2rem;margin-bottom:1rem;">
+      <div>
+        <div style="font-size:0.72rem;font-weight:700;color:var(--bordeaux);margin-bottom:0.6rem;text-transform:uppercase;letter-spacing:0.08em;">Paramètres colonne</div>
+        <div class="input-row"><span class="input-label">L (m)</span><input type="number" id="pf_L" step="1" value="30"><span class="unit-label">m</span></div>
+        <div class="input-row"><span class="input-label">dᵢ (mm)</span><input type="number" id="pf_di" step="0.01" value="0.25"><span class="unit-label">mm</span></div>
+        <div class="input-row"><span class="input-label">Gaz</span>
+          <select id="pf_gas" onchange="updatePFGasInfo()">
+            <option value="He">Hélium (He)</option>
+            <option value="H2">Hydrogène (H₂)</option>
+            <option value="N2">Azote (N₂)</option>
+          </select>
+        </div>
+        <div class="input-row"><span class="input-label">T° (°C)</span><input type="number" id="pf_T" step="1" value="150"><span class="unit-label">°C</span></div>
+      </div>
+      <div>
+        <div style="font-size:0.72rem;font-weight:700;color:var(--bordeaux);margin-bottom:0.6rem;text-transform:uppercase;letter-spacing:0.08em;">Calcul souhaité</div>
+        <div class="input-row"><span class="input-label">Calculer</span>
+          <select id="pf_mode" onchange="togglePFMode()">
+            <option value="F">Débit → depuis Pression</option>
+            <option value="P">Pression → depuis Débit</option>
+          </select>
+        </div>
+        <div id="pf_row_P" class="input-row">
+          <span class="input-label">Pi entrée</span>
+          <input type="number" id="pf_Pi" step="0.1" value="1.5">
+          <select id="pf_Pu"><option>bar</option><option>psi</option><option>kPa</option></select>
+        </div>
+        <div id="pf_row_F" class="input-row" style="display:none;">
+          <span class="input-label">Débit cible</span>
+          <input type="number" id="pf_Ftarget" step="0.01" value="1.0">
+          <span class="unit-label">mL/min</span>
+        </div>
+        <div class="input-row"><span class="input-label">Po sortie</span><input type="number" id="pf_Po" step="0.001" value="1.013"><span class="unit-label">bar</span></div>
+        <div style="font-size:0.75rem;color:var(--text-light);margin-top:0.4rem;" id="pf_eta_info"></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="calcPF()">Convertir</button>
+      <button class="btn btn-copy" onclick="copyPF()">📋 Copier</button>
+    </div>
+
+    <div class="result-box" id="pf_result">
+      <button class="result-copy-btn" onclick="copyResult('pf_result')">📋 Copier</button>
+      <div class="result-value" id="pf_resVal"></div>
+      <div class="result-detail" id="pf_resDetail"></div>
     </div>
   </div>
 </div>
@@ -2702,10 +3070,527 @@ function copyCmp() {
   const btn = event.target; flashCopy(btn, '📋 Copier');
 }
 
+// ─── GAMME HPLC — EI MODE & VOLUME INJECTION ─────────────────
+function toggleEIMode() {
+  const on = document.getElementById('g_ei_mode').checked;
+  document.getElementById('g_ei_fields').style.display = on ? 'flex' : 'none';
+  document.getElementById('g_ei_expl').style.display   = on ? 'block' : 'none';
+  document.getElementById('g_ei_col_header').style.display   = on ? '' : 'none';
+  document.getElementById('g_ratio_col_header').style.display = on ? '' : 'none';
+  buildGammeTable();
+}
+
+function buildGammeTable() {
+  const n    = parseInt(document.getElementById('g_npts').value);
+  const eiOn = document.getElementById('g_ei_mode') && document.getElementById('g_ei_mode').checked;
+  const vinj = document.getElementById('g_vinj').value || '—';
+  const tbody = document.getElementById('gammeBody');
+  tbody.innerHTML = '';
+  for (let i = 1; i <= n; i++) {
+    tbody.innerHTML += `<tr>
+      <td><span style="font-weight:700;color:var(--bordeaux);">P${i}</span></td>
+      <td><input type="number" step="any" class="g_conc" placeholder="0.0"></td>
+      <td><input type="number" step="any" class="g_sig" placeholder="0.0" ${eiOn ? 'oninput="updateRatio(this)"' : ''}></td>
+      ${eiOn ? `<td><input type="number" step="any" class="g_ei_sig" placeholder="EI signal" oninput="updateRatio(this)"></td>
+               <td class="g_ratio_cell" style="font-family:'Courier Prime',monospace;font-weight:700;color:var(--bordeaux);">—</td>` : ''}
+      <td style="text-align:center;"><input type="checkbox" class="g_inc" checked style="width:auto;accent-color:var(--bordeaux);width:16px;height:16px;"></td>
+    </tr>`;
+  }
+  const note = document.getElementById('g_vinj_note');
+  if (note) note.textContent = `Volume d'injection : ${vinj} µL — masse injectée par point = C × ${vinj} µL (en ng si C en µg/mL)`;
+  // sync unit label
+  const unitLbl = document.getElementById('g_ei_unit_lbl');
+  if (unitLbl) unitLbl.textContent = document.getElementById('g_concUnit').value;
+}
+
+function updateRatio(inp) {
+  const row  = inp.closest('tr');
+  const sig  = parseFloat(row.querySelector('.g_sig').value);
+  const eiS  = parseFloat(row.querySelector('.g_ei_sig') ? row.querySelector('.g_ei_sig').value : 'NaN');
+  const cell = row.querySelector('.g_ratio_cell');
+  if (cell && !isNaN(sig) && !isNaN(eiS) && eiS !== 0) {
+    cell.textContent = numFmt(sig / eiS);
+  }
+}
+
+function clearGamme() {
+  document.querySelectorAll('.g_conc, .g_sig, .g_ei_sig').forEach(el => el.value = '');
+  document.querySelectorAll('.g_ratio_cell').forEach(el => el.textContent = '—');
+  document.querySelectorAll('.g_inc').forEach(el => el.checked = true);
+  document.getElementById('gammeResult').style.display = 'none';
+}
+
+function calcGamme() {
+  const eiOn  = document.getElementById('g_ei_mode').checked;
+  const concs = [...document.querySelectorAll('.g_conc')];
+  const sigs  = [...document.querySelectorAll('.g_sig')];
+  const incs  = [...document.querySelectorAll('.g_inc')];
+  const eiSigs = eiOn ? [...document.querySelectorAll('.g_ei_sig')] : null;
+
+  let xs = [], ys = [];
+  for (let i = 0; i < concs.length; i++) {
+    if (!incs[i].checked) continue;
+    const x = parseFloat(concs[i].value);
+    let y = parseFloat(sigs[i].value);
+    if (eiOn && eiSigs) {
+      const ei = parseFloat(eiSigs[i].value);
+      if (!isNaN(ei) && ei !== 0) y = y / ei; else continue;
+    }
+    if (!isNaN(x) && !isNaN(y)) { xs.push(x); ys.push(y); }
+  }
+
+  if (xs.length < 3) return alert('Il faut au moins 3 points valides inclus.');
+
+  const n = xs.length;
+  const sumX  = xs.reduce((a,b)=>a+b,0);
+  const sumY  = ys.reduce((a,b)=>a+b,0);
+  const sumXY = xs.reduce((acc,x,i)=>acc+x*ys[i],0);
+  const sumX2 = xs.reduce((acc,x)=>acc+x*x,0);
+  const sumY2 = ys.reduce((acc,y)=>acc+y*y,0);
+
+  const slope     = (n*sumXY - sumX*sumY) / (n*sumX2 - sumX*sumX);
+  const intercept = (sumY - slope*sumX) / n;
+  const r  = (n*sumXY - sumX*sumY) / Math.sqrt((n*sumX2-sumX**2)*(n*sumY2-sumY**2));
+  const r2 = r*r;
+
+  const unit   = document.getElementById('g_concUnit').value;
+  const vinj   = document.getElementById('g_vinj').value || '—';
+  const eiName = eiOn ? (document.getElementById('g_ei_name').value || 'EI') : '';
+
+  const yLabel = eiOn ? `Rapport A/${eiName}` : 'Signal';
+  document.getElementById('g_eq_label').textContent = eiOn ? `Régression (rapport EI)` : `Équation de régression`;
+  document.getElementById('g_equation').textContent  = `${yLabel} = ${numFmt(slope)} × C + ${numFmt(intercept)}`;
+  document.getElementById('g_r2').textContent        = r2.toFixed(6);
+  document.getElementById('g_slopeInt').textContent  = `Pente = ${numFmt(slope)} | Ord. = ${numFmt(intercept)}`;
+  document.getElementById('g_vinj_disp').textContent = `${vinj} µL`;
+  document.getElementById('g_r2msg').innerHTML = r2 >= 0.999
+    ? `<span style="color:#2E7D32;font-weight:700;">✓ Excellent (R² ≥ 0.999)</span>`
+    : r2 >= 0.995
+    ? `<span style="color:#F57F17;font-weight:700;">⚠ Acceptable</span>`
+    : `<span style="color:#C62828;font-weight:700;">✗ Insuffisant</span>`;
+
+  document.getElementById('g_retro_ei_row').style.display = eiOn ? 'flex' : 'none';
+
+  window._gammeSlope     = slope;
+  window._gammeIntercept = intercept;
+  window._gammeUnit      = unit;
+  window._gammeEIon      = eiOn;
+  window._gammeEIname    = eiName;
+  document.getElementById('gammeResult').style.display = 'block';
+}
+
+function retroCalc() {
+  let sig = parseFloat(document.getElementById('g_retroSignal').value);
+  if (isNaN(sig) || !window._gammeSlope) return;
+  if (window._gammeEIon) {
+    const eiS = parseFloat(document.getElementById('g_retroEI').value);
+    if (!isNaN(eiS) && eiS !== 0) sig = sig / eiS;
+  }
+  const C = (sig - window._gammeIntercept) / window._gammeSlope;
+  const el = document.getElementById('g_retroResult');
+  el.style.display = 'block';
+  el.textContent = `C = (Signal${window._gammeEIon?'/EI':''} − b₀) / b₁ = (${numFmt(sig)} − ${numFmt(window._gammeIntercept)}) / ${numFmt(window._gammeSlope)} = ${numFmt(C)} ${window._gammeUnit}`;
+}
+
+function copyGamme() {
+  const rows = [...document.querySelectorAll('#gammeBody tr')];
+  const unit = document.getElementById('g_concUnit').value;
+  const eiOn = document.getElementById('g_ei_mode').checked;
+  let text = `Point\tConcentration (${unit})\tSignal${eiOn?'\tSignal EI\tRapport':''}\n`;
+  rows.forEach((row, i) => {
+    const c = row.querySelector('.g_conc').value;
+    const s = row.querySelector('.g_sig').value;
+    const inc = row.querySelector('.g_inc').checked ? '' : ' [exclu]';
+    const eiPart = eiOn ? `\t${row.querySelector('.g_ei_sig')?row.querySelector('.g_ei_sig').value:''}\t${row.querySelector('.g_ratio_cell')?row.querySelector('.g_ratio_cell').textContent:''}` : '';
+    text += `P${i+1}${inc}\t${c}\t${s}${eiPart}\n`;
+  });
+  navigator.clipboard.writeText(text);
+  const btn = event.target; flashCopy(btn, '📋 Copier tableau');
+}
+
+function copyGammeReport() {
+  const eq = document.getElementById('g_equation').textContent;
+  const r2 = document.getElementById('g_r2').textContent;
+  const si = document.getElementById('g_slopeInt').textContent;
+  const compound = document.getElementById('g_compound').value || 'N/A';
+  const unit = document.getElementById('g_concUnit').value;
+  const vinj = document.getElementById('g_vinj').value || '—';
+  const eiOn = document.getElementById('g_ei_mode').checked;
+  let text = `=== RAPPORT GAMME HPLC ===\nComposé : ${compound}\nVolume injection : ${vinj} µL\nUnité : ${unit}\n`;
+  if (eiOn) text += `Étalon interne : ${document.getElementById('g_ei_name').value||'EI'} @ ${document.getElementById('g_ei_conc').value||'?'} ${unit}\n`;
+  text += `Équation : ${eq}\nR² = ${r2}\n${si}`;
+  navigator.clipboard.writeText(text);
+  const btn = event.target; flashCopy(btn, '📋 Copier rapport complet');
+}
+
+// ─── DSP / BILAN DE MASSE ─────────────────────────────────────
+const DSP_STEP_TYPES = ['Récolte / Lyse', 'Centrifugation', 'Filtration (NFF)', 'TFF / Ultrafiltration', 'Chromatographie', 'Précipitation', 'Lyophilisation', 'Dilution / Ajustement', 'Autre'];
+
+let dspStepCount = 0;
+
+function initDSPTable() {
+  const tbody = document.getElementById('dsp_body');
+  tbody.innerHTML = '';
+  dspStepCount = 0;
+  const defaultSteps = [
+    { name: 'Récolte initiale', type: 'Récolte / Lyse' },
+    { name: 'Centrifugation clarification', type: 'Centrifugation' },
+    { name: 'Filtration TFF', type: 'TFF / Ultrafiltration' },
+  ];
+  defaultSteps.forEach(s => addDSPStep(s.name, s.type));
+}
+
+function addDSPStep(name='', type='Autre') {
+  dspStepCount++;
+  const actMode = document.getElementById('dsp_activity_mode').checked;
+  const tbody = document.getElementById('dsp_body');
+  const typeOpts = DSP_STEP_TYPES.map(t => `<option${t===type?' selected':''}>${t}</option>`).join('');
+  tbody.innerHTML += `<tr id="dsp_row_${dspStepCount}">
+    <td><input type="text" value="${name}" class="dsp_name" style="width:160px;" placeholder="Nom étape"></td>
+    <td><select class="dsp_type" style="width:130px;">${typeOpts}</select></td>
+    <td><input type="number" step="any" class="dsp_vol" placeholder="mL" style="width:80px;"></td>
+    <td><input type="number" step="any" class="dsp_conc" placeholder="mg/mL" style="width:80px;"></td>
+    <td class="dsp_act_col" style="display:${actMode?'':'none'}"><input type="number" step="any" class="dsp_act" placeholder="U/mL" style="width:80px;"></td>
+    <td class="dsp_mass_cell" style="font-family:'Courier Prime',monospace;font-weight:700;color:var(--bordeaux);">—</td>
+    <td class="dsp_yield_cell" style="font-family:'Courier Prime',monospace;font-weight:700;">—</td>
+    <td class="dsp_fp_cell" style="font-family:'Courier Prime',monospace;">—</td>
+    <td class="dsp_as_col" style="display:${actMode?'':'none'};font-family:'Courier Prime',monospace;">—</td>
+    <td><button onclick="this.closest('tr').remove()" style="background:none;border:none;cursor:pointer;color:var(--bordeaux-pale);font-size:1rem;">✕</button></td>
+  </tr>`;
+}
+
+function toggleDSPActivity() {
+  const on = document.getElementById('dsp_activity_mode').checked;
+  document.querySelectorAll('.dsp_act_col, .dsp_as_col').forEach(el => el.style.display = on ? '' : 'none');
+  document.getElementById('dsp_act_header').style.display = on ? '' : 'none';
+  document.getElementById('dsp_as_header').style.display  = on ? '' : 'none';
+}
+
+function calcDSP() {
+  const rows = [...document.querySelectorAll('#dsp_body tr')];
+  const munit = document.getElementById('dsp_munit').value;
+  const actMode = document.getElementById('dsp_activity_mode').checked;
+  let data = [];
+
+  rows.forEach(row => {
+    const vol  = parseFloat(row.querySelector('.dsp_vol').value);
+    const conc = parseFloat(row.querySelector('.dsp_conc').value);
+    const name = row.querySelector('.dsp_name').value || '—';
+    const type = row.querySelector('.dsp_type').value;
+    const act  = actMode ? parseFloat(row.querySelector('.dsp_act').value) : NaN;
+    if (!isNaN(vol) && !isNaN(conc)) {
+      data.push({ name, type, vol, conc, act, mass: vol * conc });
+    }
+  });
+
+  if (data.length === 0) return alert('Saisissez au moins une étape avec volume et concentration.');
+
+  const m0   = data[0].mass;
+  const as0  = actMode && !isNaN(data[0].act) ? data[0].act / data[0].conc : null;
+
+  rows.forEach((row, i) => {
+    if (!data[i]) return;
+    const d = data[i];
+    const yield_pct = (d.mass / m0) * 100;
+    const as = actMode && !isNaN(d.act) ? d.act / d.conc : null;
+    const fp = (as !== null && as0 !== null) ? as / as0 : null;
+
+    row.querySelector('.dsp_mass_cell').textContent  = `${numFmt(d.mass)} ${munit}`;
+    row.querySelector('.dsp_yield_cell').textContent = i === 0 ? '100 %' : `${numFmt(yield_pct)} %`;
+    row.querySelector('.dsp_yield_cell').style.color = yield_pct >= 80 ? '#2E7D32' : yield_pct >= 60 ? '#F57F17' : '#C62828';
+    row.querySelector('.dsp_fp_cell').textContent    = fp !== null ? numFmt(fp) : (i === 0 ? '1.00' : '—');
+    const asCell = row.querySelector('.dsp_as_col');
+    if (asCell) asCell.textContent = as !== null ? `${numFmt(as)} U/mg` : '—';
+  });
+
+  const lastD = data[data.length - 1];
+  const yieldGlobal = (lastD.mass / m0) * 100;
+  const asLast = actMode && !isNaN(lastD.act) ? lastD.act / lastD.conc : null;
+  const fpGlobal = (asLast !== null && as0 !== null) ? asLast / as0 : null;
+
+  document.getElementById('dsp_m0').textContent = `${numFmt(m0)} ${munit}`;
+  document.getElementById('dsp_mf').textContent = `${numFmt(lastD.mass)} ${munit}`;
+  document.getElementById('dsp_yield_global').textContent = `${numFmt(yieldGlobal)} %`;
+  document.getElementById('dsp_fp_global').textContent = fpGlobal !== null ? `× ${numFmt(fpGlobal)}` : 'N/A';
+  document.getElementById('dsp_nsteps').textContent = `${data.length} étapes`;
+  document.getElementById('dsp_result').style.display = 'block';
+}
+
+function copyDSP() {
+  const batch  = document.getElementById('dsp_batch').value || 'N/A';
+  const munit  = document.getElementById('dsp_munit').value;
+  const rows   = [...document.querySelectorAll('#dsp_body tr')];
+  let text = `=== BILAN DE MASSE DSP — ${batch} ===\n`;
+  text += `Étape\t\tType\t\tVol (mL)\tConc\tMasse (${munit})\tYield%\tFP\n`;
+  text += '─'.repeat(80)+'\n';
+  rows.forEach(row => {
+    const n = row.querySelector('.dsp_name').value;
+    const t = row.querySelector('.dsp_type').value;
+    const v = row.querySelector('.dsp_vol').value;
+    const c = row.querySelector('.dsp_conc').value;
+    const m = row.querySelector('.dsp_mass_cell').textContent;
+    const y = row.querySelector('.dsp_yield_cell').textContent;
+    const f = row.querySelector('.dsp_fp_cell').textContent;
+    text += `${n}\t${t}\t${v}\t${c}\t${m}\t${y}\t${f}\n`;
+  });
+  if (document.getElementById('dsp_result').style.display !== 'none') {
+    text += `\nYield global : ${document.getElementById('dsp_yield_global').textContent}`;
+    text += `\nFP global    : ${document.getElementById('dsp_fp_global').textContent}`;
+  }
+  navigator.clipboard.writeText(text);
+  const btn = event.target; flashCopy(btn, '📋 Copier rapport');
+}
+
+// ─── CENTRIFUGATION ───────────────────────────────────────────
+function calcCent() {
+  const vtot  = parseFloat(document.getElementById('cent_vtot').value);
+  const ctot  = parseFloat(document.getElementById('cent_ctot').value);
+  const vsurn = parseFloat(document.getElementById('cent_vsurn').value);
+  const csurn = parseFloat(document.getElementById('cent_csurn').value);
+  if ([vtot,ctot,vsurn,csurn].some(isNaN)) return alert('Remplissez tous les champs.');
+  const mi = vtot * ctot;
+  const mf = vsurn * csurn;
+  const y  = (mf / mi) * 100;
+  const fv = vsurn / vtot * 100;
+  document.getElementById('cent_resVal').textContent  = `Yield = ${numFmt(y)} %`;
+  document.getElementById('cent_resDetail').textContent =
+    `Masse initiale = ${numFmt(vtot)} × ${numFmt(ctot)} = ${numFmt(mi)} mg\n`+
+    `Masse surnageant = ${numFmt(vsurn)} × ${numFmt(csurn)} = ${numFmt(mf)} mg\n`+
+    `Yield = ${numFmt(mf)} / ${numFmt(mi)} × 100 = ${numFmt(y)} %\n`+
+    `Volume récupéré = ${numFmt(fv)} % du volume initial\n`+
+    `Pertes = ${numFmt(mi-mf)} mg dans le culot`;
+  document.getElementById('cent_result').classList.add('show');
+}
+
+// ─── TFF / UF ─────────────────────────────────────────────────
+function calcTFF() {
+  const vi  = parseFloat(document.getElementById('tff_vi').value);
+  const ci  = parseFloat(document.getElementById('tff_ci').value);
+  const vf  = parseFloat(document.getElementById('tff_vf').value);
+  const cf  = parseFloat(document.getElementById('tff_cf').value);
+  const vdf = parseFloat(document.getElementById('tff_vdf').value) || 0;
+  if ([vi,ci,vf,cf].some(isNaN)) return alert('Remplissez tous les champs.');
+  const mi  = vi * ci;
+  const mf  = vf * cf;
+  const y   = (mf / mi) * 100;
+  const frv = vi / vf;
+  const ndv = vdf > 0 ? vdf / vf : null;
+  const fc  = cf / ci;
+  document.getElementById('tff_resVal').textContent  = `Yield = ${numFmt(y)} %  |  FRV = ${numFmt(frv)}×  |  FC = ${numFmt(fc)}×`;
+  document.getElementById('tff_resDetail').textContent =
+    `Masse initiale     = ${numFmt(vi)} × ${numFmt(ci)} = ${numFmt(mi)} mg\n`+
+    `Masse rétentat     = ${numFmt(vf)} × ${numFmt(cf)} = ${numFmt(mf)} mg\n`+
+    `Yield              = ${numFmt(y)} %\n`+
+    `FRV                = ${numFmt(vi)} / ${numFmt(vf)} = ${numFmt(frv)}×\n`+
+    `Facteur conc. (FC) = ${numFmt(cf)} / ${numFmt(ci)} = ${numFmt(fc)}×\n`+
+    (ndv !== null ? `Volumes diafilt.   = ${numFmt(vdf)} / ${numFmt(vf)} = ${numFmt(ndv)} Ndv` : 'Diafiltration : N/A');
+  document.getElementById('tff_result').classList.add('show');
+}
+
+// ─── PRÉCIPITATION / LYOPHILISATION ───────────────────────────
+function togglePrecType() {
+  const t = document.getElementById('prec_type').value;
+  document.getElementById('prec_lyoph_row').style.display = t === 'lyoph' ? 'flex' : 'none';
+}
+
+function calcPrec() {
+  const type = document.getElementById('prec_type').value;
+  const mi   = parseFloat(document.getElementById('prec_mi').value);
+  const mf   = parseFloat(document.getElementById('prec_mf').value);
+  if ([mi, mf].some(isNaN)) return alert('Remplissez masse initiale et masse récupérée.');
+  const y = (mf / mi) * 100;
+  let detail = `Masse initiale   = ${numFmt(mi)} mg\nMasse récupérée = ${numFmt(mf)} mg\nYield = ${numFmt(mf)} / ${numFmt(mi)} × 100 = ${numFmt(y)} %`;
+  if (type === 'lyoph') {
+    const mlyoph = parseFloat(document.getElementById('prec_mlyoph').value);
+    if (!isNaN(mlyoph)) {
+      const h2o = ((mlyoph - mf) / mlyoph) * 100;
+      detail += `\nMasse lyophilisat total = ${numFmt(mlyoph)} mg\nTeneur eau résiduelle estimée = ${numFmt(h2o)} %`;
+    }
+  }
+  document.getElementById('prec_resVal').textContent  = `Yield = ${numFmt(y)} %`;
+  document.getElementById('prec_resDetail').textContent = detail;
+  document.getElementById('prec_result').classList.add('show');
+}
+
+// ─── GC — DONNÉES GAZ ─────────────────────────────────────────
+// Viscosité dynamique (µPa·s) via loi de Sutherland : η(T) = η_ref × (T/T_ref)^1.5 × (T_ref+S)/(T+S)
+// T en Kelvin
+const GC_GAS = {
+  He: { name:'Hélium',   eta_ref:19.6, T_ref:293, S:79.4,  uopt_025:25, uopt_032:20, color:'#4A90D9',
+        info:'u_opt ≈ 25 cm/s (0.25mm) · Efficacité élevée · Risque pénurie · Prix élevé' },
+  H2: { name:'Hydrogène',eta_ref:8.8,  T_ref:293, S:97,    uopt_025:40, uopt_032:32, color:'#E84040',
+        info:'u_opt ≈ 40 cm/s (0.25mm) · Analyses plus rapides · Attention sécurité H₂' },
+  N2: { name:'Azote',    eta_ref:17.4, T_ref:293, S:111,   uopt_025:12, uopt_032:10, color:'#27AE60',
+        info:'u_opt ≈ 12 cm/s (0.25mm) · Moins efficace · Très économique · Recommandé détecteur ECD' },
+};
+
+function gasEta(gasKey, T_C) {
+  const g = GC_GAS[gasKey];
+  const T = T_C + 273.15;
+  return g.eta_ref * Math.pow(T/g.T_ref, 1.5) * (g.T_ref + g.S) / (T + g.S); // µPa·s
+}
+
+function toPaBar(val, unit) {
+  if (unit === 'bar') return val * 1e5;
+  if (unit === 'psi') return val * 6894.76;
+  if (unit === 'kPa') return val * 1000;
+  return val;
+}
+
+function updateGCGas() {
+  const g = GC_GAS[document.getElementById('gc_gas').value];
+  document.getElementById('gc_gas_info').textContent =
+    `Gaz : ${g.name}\n${g.info}`;
+}
+
+function updatePFGasInfo() {
+  const gasKey = document.getElementById('pf_gas').value;
+  const T      = parseFloat(document.getElementById('pf_T').value) || 150;
+  const eta    = gasEta(gasKey, T);
+  document.getElementById('pf_eta_info').textContent =
+    `η(${T}°C) = ${numFmt(eta)} µPa·s pour ${GC_GAS[gasKey].name}`;
+}
+
+function calcGC() {
+  const L_m   = parseFloat(document.getElementById('gc_L').value);
+  const di_mm = parseFloat(document.getElementById('gc_di').value);
+  const df_um = parseFloat(document.getElementById('gc_df').value);
+  const T_C   = parseFloat(document.getElementById('gc_T').value);
+  const gasKey= document.getElementById('gc_gas').value;
+  const PiRaw = parseFloat(document.getElementById('gc_Pi').value);
+  const PiU   = document.getElementById('gc_Pu').value;
+  const Po_bar= parseFloat(document.getElementById('gc_Po').value);
+
+  if ([L_m,di_mm,df_um,T_C,PiRaw,Po_bar].some(isNaN)) return alert('Remplissez tous les champs.');
+
+  const Pi_Pa = toPaBar(PiRaw, PiU);
+  const Po_Pa = Po_bar * 1e5;
+  const L_cm  = L_m * 100;
+  const di_m  = di_mm / 1000;
+  const di_cm = di_mm / 10;
+  const eta   = gasEta(gasKey, T_C) * 1e-6; // Pa·s
+
+  // Débit Hagen-Poiseuille (corrigé compressibilité) à Po
+  // F = π·di⁴·(Pi²-Po²) / (256·η·L·Po)  [m³/s → mL/min]
+  const F_m3s  = Math.PI * Math.pow(di_m,4) * (Pi_Pa**2 - Po_Pa**2) / (256 * eta * L_m * Po_Pa);
+  const F_mLmin = F_m3s * 1e6 * 60; // mL/min
+
+  // Section transversale
+  const A_cm2 = Math.PI * Math.pow(di_cm/2, 2);
+  // Volume colonne mL
+  const Vcol = A_cm2 * L_cm;
+
+  // Vitesse linéaire moyenne (cm/s)
+  const u_cms = (F_mLmin / 60) / A_cm2; // cm/s
+  const u_ms  = u_cms / 100;
+
+  // u_opt selon gaz et di
+  const g = GC_GAS[gasKey];
+  const uopt = di_mm <= 0.28 ? g.uopt_025 : g.uopt_032; // cm/s
+  const uRatio = (u_cms * 10) / uopt; // u en mm/s vs uopt en cm/s → convert
+
+  // t0 (s)
+  const t0_s = L_cm / u_cms;
+
+  // N théorique (approximation Golay, β = di / (4·df) )
+  const beta = (di_mm * 1000) / (4 * df_um);
+  const HETP_cm = (di_cm / 2) * (Math.sqrt(1 + 6/beta + 11/(beta*beta))) * (u_cms / uopt) / 1;
+  // Simplification pratique : N ≈ L(m)*1000*3.33 / di(mm)
+  const N_approx = Math.round(L_m * 1000 * 3.33 / di_mm);
+
+  document.getElementById('gc_Vcol').textContent   = `${numFmt(Vcol)} mL`;
+  document.getElementById('gc_F').textContent      = `${numFmt(F_mLmin)} mL/min`;
+  document.getElementById('gc_u').textContent      = `${numFmt(u_cms)} cm/s`;
+  document.getElementById('gc_uopt_val').textContent = `u_opt ≈ ${uopt} cm/s`;
+  const uStatus = Math.abs(u_cms - uopt) / uopt <= 0.2 ? '✓ Optimal' : u_cms < uopt ? '⬇ En dessous' : '⬆ Au-dessus';
+  document.getElementById('gc_uopt_status').textContent = `${uStatus} (u = ${numFmt(u_cms)} cm/s)`;
+  document.getElementById('gc_N').textContent = N_approx.toLocaleString('fr-FR') + ' plat.';
+  document.getElementById('gc_t0').textContent = `${numFmt(t0_s/60)} min (${numFmt(t0_s)} s)`;
+
+  document.getElementById('gc_detail').textContent =
+    `Colonne : L=${L_m} m · dᵢ=${di_mm} mm · dᶠ=${df_um} µm · Phase: ${document.getElementById('gc_phase').value}\n`+
+    `Gaz : ${g.name} · T=${T_C}°C · η=${numFmt(eta*1e6)} µPa·s\n`+
+    `Pi = ${numFmt(Pi_Pa/1e5)} bar · Po = ${numFmt(Po_bar)} bar\n\n`+
+    `V_col = π·(${numFmt(di_cm/2)})²·${numFmt(L_cm)} = ${numFmt(Vcol)} mL\n`+
+    `F = π·dᵢ⁴·(Pi²-Po²) / (256·η·L·Po)\n`+
+    `  = π·(${numFmt(di_m)})⁴·(${numFmt(Pi_Pa)}²-${numFmt(Po_Pa)}²) / (256·${numFmt(eta)}·${L_m}·${numFmt(Po_Pa)})\n`+
+    `  = ${numFmt(F_mLmin)} mL/min\n`+
+    `u = F/A = ${numFmt(F_mLmin/60)} cm³/s / ${numFmt(A_cm2)} cm² = ${numFmt(u_cms)} cm/s\n`+
+    `t₀ = L/u = ${numFmt(L_cm)}/${numFmt(u_cms)} = ${numFmt(t0_s)} s = ${numFmt(t0_s/60)} min\n`+
+    `N ≈ L(m)×3330/dᵢ(mm) = ${L_m}×3330/${di_mm} = ${N_approx.toLocaleString('fr-FR')} plateaux`;
+
+  document.getElementById('gc_result').style.display = 'block';
+}
+
+function copyGC() {
+  const detail = document.getElementById('gc_detail').textContent;
+  if (!detail) return alert('Calculez d\'abord les paramètres.');
+  navigator.clipboard.writeText(`=== FICHE COLONNE GC ===\n${detail}`);
+  const btn = event.target; flashCopy(btn, '📋 Copier fiche GC');
+}
+
+// ─── CONVERTISSEUR PRESSION ↔ DÉBIT GC ───────────────────────
+function togglePFMode() {
+  const m = document.getElementById('pf_mode').value;
+  document.getElementById('pf_row_P').style.display = m === 'F' ? 'flex' : 'none';
+  document.getElementById('pf_row_F').style.display = m === 'P' ? 'flex' : 'none';
+  updatePFGasInfo();
+}
+
+function calcPF() {
+  const L    = parseFloat(document.getElementById('pf_L').value);
+  const di   = parseFloat(document.getElementById('pf_di').value) / 1000; // m
+  const gas  = document.getElementById('pf_gas').value;
+  const T    = parseFloat(document.getElementById('pf_T').value);
+  const Po   = (parseFloat(document.getElementById('pf_Po').value) || 1.013) * 1e5;
+  const mode = document.getElementById('pf_mode').value;
+  const eta  = gasEta(gas, T) * 1e-6;
+  if ([L, di*1000, T, Po].some(v => isNaN(v))) return alert('Remplissez tous les champs.');
+
+  const K = Math.PI * Math.pow(di,4) / (256 * eta * L * Po); // F = K × (Pi²-Po²)
+
+  let resVal, resDetail;
+  if (mode === 'F') {
+    const PiRaw = parseFloat(document.getElementById('pf_Pi').value);
+    const PiU   = document.getElementById('pf_Pu').value;
+    const Pi    = toPaBar(PiRaw, PiU);
+    const F_m3s  = K * (Pi**2 - Po**2);
+    const F_mLmin = F_m3s * 1e6 * 60;
+    resVal   = `F = ${numFmt(F_mLmin)} mL/min`;
+    resDetail = `Pi = ${numFmt(Pi/1e5)} bar · Po = ${numFmt(Po/1e5)} bar · η = ${numFmt(eta*1e6)} µPa·s\n`+
+                `F = π·dᵢ⁴·(Pi²-Po²)/(256·η·L·Po) = ${numFmt(F_mLmin)} mL/min`;
+  } else {
+    const Ftarget = parseFloat(document.getElementById('pf_Ftarget').value);
+    const F_m3s   = Ftarget / 1e6 / 60;
+    const Pi2     = F_m3s / K + Po**2;
+    const Pi      = Math.sqrt(Pi2);
+    const Pi_bar  = Pi / 1e5;
+    const Pi_psi  = Pi_bar * 14.5038;
+    resVal   = `Pi = ${numFmt(Pi_bar)} bar (${numFmt(Pi_psi)} psi)`;
+    resDetail = `F cible = ${numFmt(Ftarget)} mL/min · η = ${numFmt(eta*1e6)} µPa·s\n`+
+                `Pi = √(F·256·η·L·Po/(π·dᵢ⁴) + Po²) = ${numFmt(Pi_bar)} bar = ${numFmt(Pi_psi)} psi`;
+  }
+
+  document.getElementById('pf_resVal').textContent   = resVal;
+  document.getElementById('pf_resDetail').textContent = resDetail;
+  document.getElementById('pf_result').classList.add('show');
+  updatePFGasInfo();
+}
+
+function copyPF() {
+  const v = document.getElementById('pf_resVal').textContent;
+  const d = document.getElementById('pf_resDetail').textContent;
+  navigator.clipboard.writeText(`=== CONVERTISSEUR P↔F GC ===\n${v}\n${d}`);
+  const btn = event.target; flashCopy(btn, '📋 Copier');
+}
+
 // ─── INIT ─────────────────────────────────────────────────────
 buildGammeTable();
 updateMnMFields();
 renderThresholds();
+initDSPTable();
+updateGCGas();
+updatePFGasInfo();
 </script>
 </body>
 </html>
